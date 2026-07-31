@@ -9,10 +9,8 @@
 
 ## 🎯 1. Guide de Prise en Main Rapide
 
-### 📄 Livrables (PDF)
-* 📘 **Rapport complet (25 pages)** : [`rapport_vers_actuelle/main_final.pdf`](rapport_vers_actuelle/main_final.pdf)
-* 📺 **Présentation Beamer (9 slides)** : [`rapport_vers_actuelle/presentation_tuteurs.pdf`](rapport_vers_actuelle/presentation_tuteurs.pdf)
-* 🎙️ **Script oral slide-par-slide** : [`rapport_vers_actuelle/script_oral_soutenance.pdf`](rapport_vers_actuelle/script_oral_soutenance.pdf)
+### 📄 Rapport de Stage (PDF)
+* 📘 **Rapport complet (25 pages)** : [`rapport_final.pdf`](rapport_final.pdf)
 
 ### 📊 Régénération des Figures du Rapport
 Depuis la racine du projet :
@@ -68,18 +66,14 @@ code stage IMFT/
 │   └── dataio.py               # Chargeur de données Basilisk
 │
 ├── simulations/                # Données brutes de simulation (.dat)
-│   ├── betasweep/              # Balayage en intensité turbulente (lo050..hi065, wt05..wt32)
+│   ├── betasweep/              # Balayage beta0050..beta1000 (réalisations m0..m4)
 │   ├── convturb/               # Étude de convergence en maillage (lvl7, lvl8)
 │   ├── lam7_frame/             # Run laminaire de référence
 │   ├── precursor/              # Précurseur turbulent monophasique
 │   └── validation/             # Validation courants parasites et convergence laminaire
 │
-├── rapport_vers_actuelle/      # Livrables finaux
-│   ├── main_final.pdf          # Rapport complet
-│   ├── presentation_tuteurs.pdf# Présentation Beamer
-│   └── script_oral_soutenance.pdf # Script oral
-│
 ├── Makefile                    # Makefile de compilation Basilisk
+├── rapport_final.pdf           # Rapport de stage complet (25 pages)
 └── README.md                   # Ce document
 ```
 
