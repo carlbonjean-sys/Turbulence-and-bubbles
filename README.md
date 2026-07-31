@@ -1,4 +1,4 @@
-# 📖 Mode d'Emploi Total -- Code & Simulations Basilisk DNS
+# Mode d'Emploi Total -- Code & Simulations Basilisk DNS
 ## Ascension d'une Bulle en Turbulence Homogène Isotrope (HIT)
 
 **Auteur :** Carl Bonjean Fraser (ENSEEIHT / IMFT)  
@@ -7,12 +7,12 @@
 
 ---
 
-## 🎯 1. Guide de Prise en Main Rapide
+## 1. Guide de Prise en Main Rapide
 
-### 📄 Rapport de Stage (PDF)
-* 📘 **Rapport complet (25 pages)** : [`rapport_final.pdf`](rapport_final.pdf)
+### Rapport de Stage (PDF)
+* **Rapport complet (25 pages)** : [`rapport_final.pdf`](rapport_final.pdf)
 
-### 📊 Régénération des Figures du Rapport
+### Régénération des Figures du Rapport
 Depuis la racine du projet :
 ```bash
 python scripts/plot_courbe_maitresse.py && python scripts/plot_campagne_beta.py && python scripts/plot_weber_turbulent.py && python scripts/plot_conv_turb.py && python scripts/plot_trajectoires_cote_a_cote.py
@@ -20,7 +20,7 @@ python scripts/plot_courbe_maitresse.py && python scripts/plot_campagne_beta.py 
 
 ---
 
-## 📐 2. Cadre Physique & Paramètres Adimensionnels
+## 2. Cadre Physique & Paramètres Adimensionnels
 
 La configuration physique modélise l'ascension d'une bulle de gaz déformable ($\rho_l/\rho_g = 850$, $\mu_l/\mu_g = 53.9$) dans un liquide soumis à une turbulence homogène et isotrope forcée en boîte triplement périodique.
 
@@ -36,7 +36,7 @@ La configuration physique modélise l'ascension d'une bulle de gaz déformable (
 
 ---
 
-## 📂 3. Organisation des Dossiers
+## 3. Organisation des Dossiers
 
 ```text
 code stage IMFT/
@@ -79,7 +79,7 @@ code stage IMFT/
 
 ---
 
-## 🛠️ 4. Compilation & Exécution des Solveurs C (`src/`)
+## 4. Compilation & Exécution des Solveurs C (`src/`)
 
 ```bash
 make            # Compile le binaire MPI ./bubble
@@ -99,7 +99,7 @@ mpirun -np 4 ./bubble 7 50 8.0 1 21 1 1.0 0.20 4.0 -1 0
 
 ---
 
-## 📈 5. Traitement des Données (`scripts/`)
+## 5. Traitement des Données (`scripts/`)
 
 Les scripts Python lisent la base de données standardisée `simulations/betasweep/`.
 
