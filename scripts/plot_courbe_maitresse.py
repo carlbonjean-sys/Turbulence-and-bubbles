@@ -32,16 +32,16 @@ C_DATA, C_LIT1, C_LIT2 = "#2a78d6", "#eb6834", "#9b59b6"
 INK, INK2, INK3 = "#0b0b0b", "#52514e", "#8a8a84"
 
 POINTS = [
-    ("lo050", 0.050, Path("simulations/betasweep/lo050_m{m}_bub/frame.dat")),
-    ("lo075", 0.075, Path("simulations/betasweep/lo075_m{m}_bub/frame.dat")),
-    ("lo100", 0.100, Path("simulations/betasweep/lo100_m{m}_bub/frame.dat")),
-    ("wt05",  0.150, Path("simulations/betasweep/wt05_m{m}_bub/frame.dat")),
-    ("wt11",  0.220, Path("simulations/betasweep/wt11_m{m}_bub/frame.dat")),
-    ("wt21",  0.310, Path("simulations/betasweep/wt21_m{m}_bub/frame.dat")),
-    ("wt25",  0.330, Path("simulations/betasweep/wt25_m{m}_bub/frame.dat")),
-    ("wt32",  0.380, Path("simulations/betasweep/wt32_m{m}_bub/frame.dat")),
-    ("hi050", 0.500, Path("simulations/betasweep/hi050_m{m}_bub/frame.dat")),
-    ("hi065", 0.650, Path("simulations/betasweep/hi065_m{m}_bub/frame.dat")),
+    ("beta0050", 0.050, Path("simulations/betasweep/beta0050_m{m}_bub/frame.dat")),
+    ("beta0075", 0.075, Path("simulations/betasweep/beta0075_m{m}_bub/frame.dat")),
+    ("beta0100", 0.100, Path("simulations/betasweep/beta0100_m{m}_bub/frame.dat")),
+    ("beta0150", 0.150, Path("simulations/betasweep/beta0150_m{m}_bub/frame.dat")),
+    ("beta0220", 0.220, Path("simulations/betasweep/beta0220_m{m}_bub/frame.dat")),
+    ("beta0310", 0.310, Path("simulations/betasweep/beta0310_m{m}_bub/frame.dat")),
+    ("beta0330", 0.330, Path("simulations/betasweep/beta0330_m{m}_bub/frame.dat")),
+    ("beta0380", 0.380, Path("simulations/betasweep/beta0380_m{m}_bub/frame.dat")),
+    ("beta0500", 0.500, Path("simulations/betasweep/beta0500_m{m}_bub/frame.dat")),
+    ("beta0650", 0.650, Path("simulations/betasweep/beta0650_m{m}_bub/frame.dat")),
 ]
 
 rows = []
@@ -76,7 +76,6 @@ for a in ax:
         a.spines[s].set_visible(False)
     for s in ("left", "bottom"):
         a.spines[s].set_color(INK3)
-    a.tick_params(colors=INK2, labelsize=11)
 
 a = ax[0]
 bb = np.linspace(0, 0.70, 200)
@@ -106,7 +105,6 @@ OUT1.parent.mkdir(parents=True, exist_ok=True)
 plt.savefig(OUT1, dpi=300)
 plt.close()
 
-# Figure 2 : Courbe maitresse
 fig, ax = plt.subplots(figsize=(7, 5))
 ax.grid(alpha=.25, lw=.6, color=INK3)
 ax.set_axisbelow(True)
@@ -128,4 +126,4 @@ ax.legend(frameon=True, facecolor="white", edgecolor="none")
 plt.tight_layout()
 plt.savefig(OUT2, dpi=300)
 plt.close()
-print("Figure maître générée avec succès dans scripts/figures/")
+print("Figure maître générée dans scripts/figures/")

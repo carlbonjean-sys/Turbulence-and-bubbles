@@ -46,8 +46,8 @@ CF = {"t": 0, "uz": 1, "z": 2, "ub": 3}                  # frame.dat
 CB = {"t": 0, "volume": 1, "chi": 12}                    # bubble.dat
 
 # les 5 points Weber : (label, KE_TARGET, beta = u'/u_inf mesure sur precurseur)
-POINTS = [("wt05", 5,  0.15), ("wt11", 11, 0.22), ("wt21", 21, 0.31),
-          ("wt25", 25, 0.33), ("wt32", 32, 0.38)]
+POINTS = [("beta0150", 5, 0.15), ("beta0220", 11, 0.22), ("beta0310", 21, 0.31),
+          ("beta0330", 25, 0.33), ("beta0380", 32, 0.38)]
 MEMBERS = [0, 1, 2, 3, 4]
 
 

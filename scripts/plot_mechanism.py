@@ -10,10 +10,10 @@ import sys
 from pathlib import Path
 
 RUNS = [
-    ("laminaire", "simulations/lam7_frame",            0.00),
-    ("wt05",      "simulations/betasweep/wt05_m0_bub",  0.15),
-    ("wt21",      "simulations/betasweep/wt21_m0_bub",  0.31),
-    ("wt32",      "simulations/betasweep/wt32_m0_bub",  0.38),
+    ("laminaire", "simulations/lam7_frame",               0.00),
+    ("beta0150",  "simulations/betasweep/beta0150_m0_bub",  0.15),
+    ("beta0310",  "simulations/betasweep/beta0310_m0_bub",  0.31),
+    ("beta0380",  "simulations/betasweep/beta0380_m0_bub",  0.38),
 ]
 OUT = Path("scripts/figures/mechanism.png")
 U_LAM = 12.27
@@ -22,7 +22,7 @@ T0 = 220.0
 CONE = [4, 5, 6, 7]
 RBAND = [1.25, 1.75, 2.25, 2.75]
 INK, INK2, INK3 = "#0b0b0b", "#52514e", "#8a8a84"
-COL = {"laminaire": "#8a8a84", "wt05": "#2a78d6", "wt21": "#eb6834", "wt32": "#008300"}
+COL = {"laminaire": "#8a8a84", "beta0150": "#2a78d6", "beta0310": "#eb6834", "beta0380": "#008300"}
 
 def load(path):
     f = Path(path) / "mechanism.dat"

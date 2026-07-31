@@ -27,16 +27,16 @@ U_LAM, G, D, T0 = 12.27, 4.0, 16.0, 220.0
 SQ_GD = np.sqrt(G * D)
 
 POINTS = [
-    ("lo050", 0.050, Path("simulations/betasweep/lo050_m{m}_bub/frame.dat")),
-    ("lo075", 0.075, Path("simulations/betasweep/lo075_m{m}_bub/frame.dat")),
-    ("lo100", 0.100, Path("simulations/betasweep/lo100_m{m}_bub/frame.dat")),
-    ("wt05",  0.150, Path("simulations/betasweep/wt05_m{m}_bub/frame.dat")),
-    ("wt11",  0.220, Path("simulations/betasweep/wt11_m{m}_bub/frame.dat")),
-    ("wt21",  0.310, Path("simulations/betasweep/wt21_m{m}_bub/frame.dat")),
-    ("wt25",  0.330, Path("simulations/betasweep/wt25_m{m}_bub/frame.dat")),
-    ("wt32",  0.380, Path("simulations/betasweep/wt32_m{m}_bub/frame.dat")),
-    ("hi050", 0.500, Path("simulations/betasweep/hi050_m{m}_bub/frame.dat")),
-    ("hi065", 0.650, Path("simulations/betasweep/hi065_m{m}_bub/frame.dat")),
+    ("beta0050", 0.050, Path("simulations/betasweep/beta0050_m{m}_bub/frame.dat")),
+    ("beta0075", 0.075, Path("simulations/betasweep/beta0075_m{m}_bub/frame.dat")),
+    ("beta0100", 0.100, Path("simulations/betasweep/beta0100_m{m}_bub/frame.dat")),
+    ("beta0150", 0.150, Path("simulations/betasweep/beta0150_m{m}_bub/frame.dat")),
+    ("beta0220", 0.220, Path("simulations/betasweep/beta0220_m{m}_bub/frame.dat")),
+    ("beta0310", 0.310, Path("simulations/betasweep/beta0310_m{m}_bub/frame.dat")),
+    ("beta0330", 0.330, Path("simulations/betasweep/beta0330_m{m}_bub/frame.dat")),
+    ("beta0380", 0.380, Path("simulations/betasweep/beta0380_m{m}_bub/frame.dat")),
+    ("beta0500", 0.500, Path("simulations/betasweep/beta0500_m{m}_bub/frame.dat")),
+    ("beta0650", 0.650, Path("simulations/betasweep/beta0650_m{m}_bub/frame.dat")),
 ]
 
 rows = []

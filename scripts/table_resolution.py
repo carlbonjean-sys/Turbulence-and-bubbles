@@ -12,8 +12,8 @@ from dataio import load_table
 RUNS = Path("simulations/betasweep")
 L0, D, NU, T0 = 120.0, 16.0, 0.01 * (120.0 / (2 * np.pi)) ** 2 / 2, 220.0
 U_LAM = 12.27
-POINTS = [("wt05", 0.15, 5), ("wt11", 0.22, 11), ("wt21", 0.31, 21),
-          ("wt25", 0.33, 25), ("wt32", 0.38, 32)]
+POINTS = [("beta0150", 0.15, 5), ("beta0220", 0.22, 11), ("beta0310", 0.31, 21),
+          ("beta0330", 0.33, 25), ("beta0380", 0.38, 32)]
 
 rows = []
 for tag, beta, ke in POINTS:
@@ -30,10 +30,10 @@ for tag, beta, ke in POINTS:
     rows.append(dict(tag=tag, beta=beta, ke=ke, eps=eps, k=kel, relam=relam,
                      eta=eta, u_inf=u_inf, up=np.sqrt(2 * kel / 3)))
 
-print(f"{'pt':6} {'beta':>5} {'Re_l':>6} {'eps':>7} {'eta':>6} "
+print(f"{'pt':8} {'beta':>5} {'Re_l':>6} {'eps':>7} {'eta':>6} "
       f"|{'  k_max.eta lvl7':>16} {'lvl8':>7} |{'  D/dx7':>8} {'d/dx7':>7} {'d/dx8':>7}")
 for r in rows:
-    line = f"{r['tag']:6} {r['beta']:5.2f} {r['relam']:6.1f} {r['eps']:7.3f} {r['eta']:6.3f} |"
+    line = f"{r['tag']:8} {r['beta']:5.2f} {r['relam']:6.1f} {r['eps']:7.3f} {r['eta']:6.3f} |"
     for lv in (7, 8):
         kmax = np.pi * 2 ** lv / L0
         line += f"{kmax*r['eta']:16.2f}" if lv == 7 else f"{kmax*r['eta']:7.2f}"

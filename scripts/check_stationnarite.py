@@ -57,7 +57,7 @@ analyse("laminaire", f"{ROOT}/simulations/lam7_frame/frame.dat",
         f"{ROOT}/simulations/lam7_frame/bubble.dat", 210)
 
 print("\n--- Régime permanent (TURBULENCE - Betasweep) ---")
-for lab in ["wt05","wt11","wt21","wt25","wt32"]:
+for lab in ["beta0150","beta0220","beta0310","beta0330","beta0380"]:
     for mm in range(5):
         d=f"{ROOT}/simulations/betasweep/{lab}_m{mm}_bub"
         if os.path.isdir(d):
