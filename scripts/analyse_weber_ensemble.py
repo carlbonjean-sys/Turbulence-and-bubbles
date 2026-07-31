@@ -98,19 +98,15 @@ def main():
                     help="debut du plateau frame_uz (defaut 220)")
     args = ap.parse_args()
 
-    base = os.path.join(args.root, "simulations", "weber_ensemble")
+    base = os.path.join(args.root, "simulations", "betasweep")
     figdir = os.path.join(args.root, "scripts", "figures")
     os.makedirs(figdir, exist_ok=True)
-
-    print(f"\n{'='*66}\n  CAMPAGNE weber_rise -- ensemble (u_inf_lam = {U_LAM}, plateau t>={args.t0:.0f})\n{'='*66}")
-    print(f"{'Weber':6} {'beta':>5} {'membres (frame_uz plateau)':32} "
-          f"{'moy':>6} {'ratio':>6} {'red%':>6} {'SEM':>6}")
 
     rows = []
     for lab, ke, beta in POINTS:
         members = []
         for m in MEMBERS:
-            d = os.path.join(base, f"{lab}_m{m}")
+            d = os.path.join(base, f"{lab}_m{m}_bub")
             pl = plateau_uz(load(os.path.join(d, "frame.dat")), args.t0)
             vc = vol_check(load(os.path.join(d, "bubble.dat")), args.t0)
             if pl is not None:
