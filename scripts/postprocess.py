@@ -50,17 +50,8 @@ from dataio import load_table
 
 
 def load(path):
-    """Chargeur commun ROBUSTE (scripts/dataio.py).
-
-    ATTENTION, l'ancienne version se disait "robuste" mais fixait le nombre de
-    colonnes sur la 1re ligne de donnees et jetait SILENCIEUSEMENT toutes les
-    autres largeurs. Depuis la correction d'`event bubble` (2026-07-22),
-    bubble.dat a 16 colonnes au lieu de 13 : un run repris avec le nouveau
-    binaire aurait vu toute sa seconde moitie ignoree sans un mot. load_table
-    tronque a la largeur commune (les colonnes 1-13 ont garde leur sens) et
-    signale sur stderr des qu'il tronque ou ecarte quoi que ce soit."""
+    """Charge un fichier de données via dataio.load_table."""
     if not os.path.isfile(path):
-        print(f"  [skip] {path} introuvable")
         return None
     return load_table(path)
 
