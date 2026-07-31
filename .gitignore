@@ -6,7 +6,9 @@ bubble_serial
 *.so
 *.exe
 
-# TeX temporary compilation files
+# LaTeX source & temporary build files (only PDFs are tracked)
+*.tex
+*.bib
 *.aux
 *.log
 *.out
@@ -16,6 +18,9 @@ bubble_serial
 *.fdb_latexmk
 *.fls
 *.synctex.gz
+*.nav
+*.snm
+readme_rapport.txt
 
 # Python cache & virtualenv
 __pycache__/
