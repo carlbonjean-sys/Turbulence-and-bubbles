@@ -1,15 +1,7 @@
 /**
- * render.c -- Rendu offline d'un snapshot (dump) Basilisk.
- * Compile separement (OSMesa/GL) pour produire des PNG sans alourdir la DNS.
+ * render.c -- Rendu hors-ligne d'un snapshot Basilisk (coupe x-y).
  *
- *   usage : ./render <fichier_dump> <basename>
- *
- * Produit (coupe a mi-domaine + interface) :
- *   <basename>_bulle_maillage.png  : bulle + maillage (verif resolution)
- *   <basename>_vitesse.png         : champ de vitesse u.z
- *   <basename>_vorticite.png       : |rot(u)|
- *   <basename>_enstrophie.png      : |rot(u)|^2
- *   <basename>_cisaillement.png    : carre du taux de deformation |S|^2
+ * Usage : ./render <fichier_dump> <basename>
  */
 
 #include "grid/octree.h"
@@ -33,7 +25,6 @@ int main (int argc, char ** argv)
   char * base = argv[2];
   char name[256];
 
-  /* Champs derives : vorticite, enstrophie, carre du taux de deformation. */
   foreach() {
     double uxx = (u.x[1]    - u.x[-1]   )/(2.*Delta);
     double uxy = (u.x[0,1]  - u.x[0,-1] )/(2.*Delta);
@@ -45,7 +36,7 @@ int main (int argc, char ** argv)
     double uzy = (u.z[0,1]  - u.z[0,-1] )/(2.*Delta);
     double uzz = (u.z[0,0,1]- u.z[0,0,-1])/(2.*Delta);
 
-    double wx = uzy - uyz, wy = uxz - uzx, wz = uyx - uxy;   // rot(u)
+    double wx = uzy - uyz, wy = uxz - uzx, wz = uyx - uxy;
     omega2[] = wx*wx + wy*wy + wz*wz;
     omega[]  = sqrt(omega2[]);
 
@@ -53,7 +44,6 @@ int main (int argc, char ** argv)
     S2[] = uxx*uxx + uyy*uyy + uzz*uzz + 2.*(sxy*sxy + sxz*sxz + syz*syz);
   }
 
-  /* Hauteur (z) de la bulle pour couper le plan horizontal x-y qui la traverse. */
   double sz = 0., sv = 0.;
   foreach (reduction(+:sz) reduction(+:sv)) {
     double w = dv()*(1. - f[]);
@@ -61,21 +51,18 @@ int main (int argc, char ** argv)
   }
   double zc = (sv > 1e-10 ? sz/sv : L0/2.);
 
-  /* Vue X-Y (camera "front") centree -> on coupe en z-normal (alpha = zc). */
   view (width = 1024, height = 1024, fov = 22, camera = "front",
         tx = -0.5, ty = -0.5, bg = {1,1,1}, samples = 4);
 
   const char * field[]  = {"u.z", "omega", "omega2", "S2"};
   const char * suffix[] = {"vitesse", "vorticite", "enstrophie", "cisaillement"};
 
-  /* 1. Bulle + maillage (verifier le nb de mailles dans le diametre). */
   clear();
   cells   (n = {0,0,1}, alpha = zc);
   draw_vof ("f", lw = 3.);
   box();
   sprintf (name, "%s_bulle_maillage.png", base); save (name);
 
-  /* 2-5. Champs (coupe x-y a la hauteur de la bulle), interface en surimpression. */
   for (int k = 0; k < 4; k++) {
     clear();
     squares (field[k], n = {0,0,1}, alpha = zc, linear = true);
