@@ -1,33 +1,7 @@
 #!/usr/bin/env python3
-# ============================================================================
-#  postprocess.py -- Courbes de convergence spatiale + statistiques turbulence
-# ----------------------------------------------------------------------------
-#  Lit :
-#    simulations/precursor/stats.dat      (# t dissipation energy Reynolds)
-#    simulations/lvl{7,8,9}/bubble.dat    (# t volume xc yc zc ux uy uz
-#                                             width depth height d_eq chi)
-#    simulations/lvl{7,8,9}/stats.dat     (turbulence PENDANT le run bulle,
-#                                          pour tau = k/eps)
-#
-#  Produit (dans scripts/figures/) :
-#    - rise_velocity.png       : vitesse de remontee u_z(t) pour chaque niveau
-#    - cumulative_mean.png     : moyenne cumulee U_cum(t;t0) vs depuis injection (P6)
-#    - t0_robustness.png       : U_b(t0) -> plateau = choix de t0 non arbitraire (P6)
-#    - convergence.png         : U_b (regression depuis t0) vs maxlevel
-#    - divergence_lvl7_lvl8.png: |z7-z8|(t), |uz7-uz8|(t) semilog (P7, chaos)
-#    - aspect_ratio.png        : chi(t) et width/depth/height
-#    - trajectoire.png         : montee + derive horizontale (deperiodisees)
-#    - turbulence.png          : energie, dissipation, Reynolds du precurseur
-#    - convergence_table.csv   : recap chiffre (U_b, C_D, Re_b, n_tau, traversees)
-#
-#  P6 (tuteurs) : la moyenne demarre a t0 = injection + transitoire, PAS a
-#  l'injection. U_b = pente de la regression lineaire de z_deperiodise(t) sur
-#  [t0, fin] (robuste), plus la moyenne cumulee pour visualiser la convergence.
-#
-#  Usage :
-#    python scripts/postprocess.py [--root .] [--levels 7 8 9] [--tail 0.2]
-#                                  [--t0-offset 8.0] [--t0 ABS]
-# ============================================================================
+"""
+postprocess.py -- Analyse et tracés des statistiques de convergence et de turbulence.
+"""
 import argparse
 import os
 import numpy as np
@@ -73,7 +47,7 @@ def unwrap_periodic(p, period=L0):
 
 
 def ub_regression(t, z, t0):
-    """U_b = pente de la regression lineaire de z(t) sur [t0, fin] (P6)."""
+    """U_b = pente de la regression lineaire de z(t) sur [t0, fin]."""
     mask = t >= t0
     if mask.sum() < 10:
         return np.nan
