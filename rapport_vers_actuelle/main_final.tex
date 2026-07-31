@@ -1,0 +1,81 @@
+\documentclass[11pt,a4paper]{article}
+
+\input{preambule}
+
+\begin{document}
+
+\begin{titlepage}
+    \centering
+    \begin{figure}[h!]
+        \centering
+        \includegraphics[width=0.2\textwidth]{logo_imft.png}
+    \end{figure}
+
+    \vspace{1.5cm}
+
+    {\large\bfseries ENSEEIHT -- Toulouse INP}\\[0.2cm]
+    {\large Institut de Mécanique des Fluides de Toulouse (IMFT)}\\[1.5cm]
+
+    \rule{\linewidth}{0.5mm} \\[0.4cm]
+    {\huge\bfseries Effet de la turbulence sur la vitesse\\[0.2cm]
+     d'ascension d'une bulle}\\[0.3cm]
+    {\large\itshape Simulation numérique directe (Basilisk) d'une bulle
+     en turbulence homogène isotrope}\\[0.3cm]
+    \rule{\linewidth}{0.5mm} \\[2cm]
+
+    \begin{minipage}{0.45\textwidth}
+        \begin{flushleft} \large
+            \emph{Auteur :}\\
+            \textbf{Carl Bonjean Fraser}\\
+            \small Étudiant Ingénieur (M1 / 2A MFEE)
+        \end{flushleft}
+    \end{minipage}
+    ~
+    \begin{minipage}{0.45\textwidth}
+        \begin{flushright} \large
+            \emph{Tuteurs de stage :}\\
+            \textbf{LEGENDRE Dominique}\\
+            \textbf{ZAMANSKY Rémi}
+        \end{flushright}
+    \end{minipage}
+
+    \vfill
+    {\large Rapport de stage}\\[0.2cm]
+    {\large Année Universitaire 2025-2026 \quad--\quad Juin -- Juillet 2026}
+\end{titlepage}
+
+\newpage
+\begin{abstract}
+\noindent
+On étudie par simulation numérique (solveur \texttt{Basilisk}, méthode
+Volume-Of-Fluid, maillage octree adaptatif) l'ascension d'une bulle de gaz unique
+($\rho_l/\rho_g = 850$, nombre de Bond $Bo=1$, nombre de Galilée $Ga=70$) dans une
+turbulence homogène isotrope en boite triplement périodique. Nous cherchons a savoir 
+si la turbulence ambiante accélère ou ralentit la remontée d'une bulle. En balayant
+l'intensité turbulente $\beta = u'/u_\infty$, on montre que la turbulence
+\textbf{ralentissent} systématiquement la remontée, de $-3\,\%$ à $\beta=0{,}05$ jusqu'à
+$-72\,\%$ à $\beta=0{,}65$, en accord sans ajustement avec la courbe de référence de la
+littérature. Une mesure directe du champ de vitesse vu par la bulle attribue ce
+ralentissement à la \textbf{traînée non linéaire} plutôt qu'à un échantillonnage
+préférentiel.
+\end{abstract}
+
+\newpage
+\tableofcontents
+\newpage
+
+\input{final/sec1_intro}
+\input{final/sec2_cadre}
+\input{final/sec3_methodes}
+\input{final/sec4_validation}
+\input{final/sec5_resultats}
+\input{final/sec6_mecanisme}
+\input{final/sec7_conclusion}
+
+\newpage
+% \cite{} uniquement (le preambule ne charge PAS natbib).
+% Compilation : pdflatex -> bibtex -> pdflatex x2
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}

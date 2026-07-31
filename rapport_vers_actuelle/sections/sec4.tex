@@ -1,0 +1,50 @@
+\section{Préambule et Définitions}
+
+Cette section introduit les grandeurs physiques et les groupements adimensionnels fondamentaux régissant la dynamique de l'ascension d'une bulle isolée, ainsi que les concepts numériques inhérents à la résolution par volumes finis.
+
+\subsection{Propriétés Physiques}
+La dynamique diphasique repose sur les propriétés respectives du fluide porteur (liquide, indice $l$) et du fluide dispersé (gaz, indice $g$).
+\begin{itemize}
+    \item \textbf{Masse volumique ($\rho$)} : Exprimée en kg/m$^3$. Le moteur de l'ascension est la poussée d'Archimède, générée par l'écart de densité $\Delta\rho = \rho_l - \rho_g$.
+    \item \textbf{Viscosité dynamique ($\mu$)} : Exprimée en Pa$\cdot$s. Caractérise la résistance du fluide au cisaillement continu. La viscosité cinématique, diffusivité de la quantité de mouvement, est définie par $\nu = \mu / \rho$ (en m$^2$/s).
+    \item \textbf{Tension superficielle ($\sigma$)} : Exprimée en N/m. Force s'exerçant à l'interface tendant à en minimiser l'aire, s'opposant ainsi à la déformation de la bulle.
+\end{itemize}
+\paragraph{Conclusion de la première semaine}: Cette première semaine m'aura introduit les concepts les plus simple de la CFD sous \texttt{Basilisk} en 2D. J'ai pu tourner des programmes sur mon ordinateur pour voir comment le solveur fonctionnait. A présent, il est temps de passer à des cas 3D en utilisant un supercalculateur, car mon ordinateur personnel ne peut certainement pas tourner de tels programmes. Ainsi, cette seconde semaine, on verra comment j'ai appris à utiliser le supercalculateur, et nous visualiserons les différents programmes de CFD 3D réalisés. 
+
+\subsection{Nombres Adimensionnels}
+L'application du théorème de Vaschy-Buckingham au système fait émerger trois nombres adimensionnels stricts décrivant la morphologie et le sillage de la bulle :
+
+\begin{itemize}
+    \item \textbf{Nombre de Reynolds ($Re$)} : Évalue le ratio entre les forces d'inertie et les forces visqueuses.
+    \begin{equation}
+        Re = \frac{\rho_l V D}{\mu_l} = \frac{V D}{\nu_l}
+    \end{equation}
+    où $V$ est la vitesse terminale d'ascension et $D$ le diamètre équivalent de la bulle. Un $Re \gg 1$ implique un sillage turbulent et une forte instationnarité.
+
+    \item \textbf{Nombre de Bond ($Bo$) ou Eötvös ($Eo$)} : Définit le ratio entre les forces de flottabilité (Archimède) et les forces de tension superficielle.
+    \begin{equation}
+        Bo = \frac{\Delta\rho g D^2}{\sigma}
+    \end{equation}
+    Un $Bo$ élevé entraîne un fort étalement horizontal de la bulle (forme ellipsoïdale).
+
+    \item \textbf{Nombre de Morton ($Mo$)} : Il caractérise  les propriétés physiques des fluides.
+    \begin{equation}
+        Mo = \frac{g \mu_l^4 \Delta\rho}{\rho_l^2 \sigma^3}
+    \end{equation}
+    Le couple $(Bo, Mo)$ ou $(Re, Bo)$ permet de prédire le régime de la bulle sur le diagramme de Grace.
+\end{itemize}
+
+\begin{figure}[htbp]
+    \centering
+    % ATTENTION : le vrai diagramme de Grace est manquant. L'ancien grace.png etait
+    % en fait une image de bulle. Remplacer par un vrai diagramme de Grace si besoin.
+    \includegraphics[width=0.3\textwidth]{bulle2d_diff.png}
+    \caption{Diagramme de Grace définissant les régimes d'une bulle isolée en ascension en fonction des nombres d'Eötvös, Bond ($Eo, Bo$), de Reynolds ($Re$) et de Morton ($Mo$).}
+    \label{fig:diagramme_grace}
+\end{figure}
+
+\subsection{Concepts Numériques}
+\begin{itemize}
+    \item \textbf{Volume of Fluid (VOF)} : Méthode eulérienne de capture d'interface utilisant une fonction indicatrice (fraction volumique) $f$. $f=1$ dans le liquide, $f=0$ dans le gaz. L'interface est reconstruite géométriquement dans les mailles mixtes où $0 < f < 1$.
+    \item \textbf{Adaptive Mesh Refinement (AMR)} : Raffinement adaptatif du maillage spatial (quadtree en 2D/octree en 3D) basé sur l'analyse de l'erreur de discrétisation par ondelettes des champs scalaires et vectoriels, permettant d'optimiser le coût de calcul tout en capturant l'interface et les zones de fort gradient (sillage).
+\end{itemize}

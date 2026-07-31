@@ -1,0 +1,42 @@
+% ============================================================================
+%  preambule.tex -- packages et reglages du rapport
+%  (regenere : l'original avait ete ecrase par une image)
+% ============================================================================
+
+% --- Encodage et langue ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+
+% --- Mise en page ---
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+\usepackage{setspace}
+\usepackage{parskip}
+
+% --- Maths ---
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{bm}        % \bm{...} (symboles gras) utilise dans sec3 (Navier-Stokes)
+\usepackage{siunitx}
+
+% --- Figures et tableaux ---
+\usepackage{graphicx}
+% Cherche les images dans sections/images/ (puis images/ et le dossier courant)
+\graphicspath{{sections/images/}{images/}{./}}
+\usepackage{float}
+\usepackage{subcaption}
+\usepackage{caption}
+\usepackage{booktabs}
+
+% --- Liens cliquables ---
+\usepackage{xcolor}
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    citecolor=blue,
+    urlcolor=blue,
+    pdftitle={Rapport d'avancement de stage -- IMFT},
+    pdfauthor={Carl Bonjean Fraser}
+}

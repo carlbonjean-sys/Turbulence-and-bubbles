@@ -1,0 +1,191 @@
+\section{Simulations réalisées - 2D}
+\label{sec:simulations}
+
+\subsection{La bulle isolée (\textit{single rising bubble})}
+
+\subsubsection{Physique du phénomène}
+La simulation modélise l'ascension d'une bulle de gaz unique au sein d'un liquide initialement au repos sous l'effet de la poussée d'Archimède. Le comportement du système est entièrement dicté par le choix de deux nombres adimensionnels clés : le nombre de Galilei ($Ga$) et le nombre de Bond ($Bo$), définis respectivement par :
+\begin{equation}
+    Ga = \frac{\sqrt{g d_p^3} \rho_c}{\mu_c} = 100
+\end{equation}
+\begin{equation}
+    Bo = \frac{\rho_c g d_p^2}{\sigma} = 10
+\end{equation}
+où $g$ est l'accélération de la pesanteur, $d_p$ le diamètre de la bulle, $\rho_c$ et $\mu_c$ la masse volumique et la viscosité du fluide porteur (continu), et $\sigma$ la tension de surface.
+
+\subsubsection{Dynamique et instabilités}
+Sous l'effet des forces de traînée et de la tension de surface, la bulle s'aplatit pour adopter une forme ellipsoïdale. Aux valeurs de $Ga$ et $Bo$ sélectionnées, le sillage hydrodynamique derrière l'obstacle subit une bifurcation. Les vortex se détachent de manière alternée à gauche et à droite du plan de symétrie (allée de Von Kármán). 
+
+Ce détachement périodique induit une force de portance latérale oscillante. Par conséquent, la trajectoire de la bulle dévie de la ligne droite verticale pour suivre un mouvement de \textbf{zigzag}. La projection de la vitesse sur l'axe vertical, $V_y(t)$, ne converge donc pas vers une constante fixe mais vers un régime permanent oscillant (pseudo-périodique).
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.4\textwidth]{bulle2d.png}
+    \caption{Capture de la trajectoire en zigzag et détachement de tourbillons dans le sillage d'une bulle isolée. Vitesse moyenne à $0.6$ m/s.}
+    \label{fig:single_bubble}
+\end{figure}
+
+\subsection{Le Champ Turbulent (\textit{Decaying 2D Turbulence})}
+
+\subsubsection{Physique du phénomène}
+Ce module résout la turbulence bidimensionnelle, homogène et isotrope en régime de décroissance libre (sans forçage énergétique continu). Les équations d'Euler incompressibles sont résolues sous leur forme de formulation vorticité-fonction de courant ($\omega - \psi$) :
+\begin{equation}
+    \frac{\partial \omega}{\partial t} + \mathbf{u} \cdot \nabla \omega = 0
+\end{equation}
+
+\subsubsection{Cascade inverse d'énergie}
+La physique de la turbulence en deux dimensions diffère fondamentalement du cas tridimensionnel. En 3D, le mécanisme d'étirement des tubes de tourbillon (\textit{vortex stretching}) brise les structures en entités de plus en plus petites (cascade directe d'énergie). En 2D, cette dynamique est absente et le système subit une \textbf{cascade inverse d'énergie}. 
+
+Le chaos initial, modélisé par l'injection d'un bruit blanc aléatoire à $t=0$, s'auto-organise spontanément au cours du temps. Les petits tourbillons adjacents possédant un signe identique fusionnent pour former des macro-structures cohérentes (vortex circulaires de grande échelle). Ces structures stables finissent par dissiper leur énergie par friction visqueuse à des temps très longs.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.4\textwidth]{turbulence2d.png}
+    \caption{Capture du champ de vorticité d'une turbulence 2D décroissante montrant la fusion des structures.}
+    \label{fig:turbulence_2d}
+\end{figure}
+
+\subsection{Bulle isolée dans un champ turbulent}
+
+L'objectif central de ce travail de stage étant de quantifier l'impact d'une turbulence ambiante sur la dynamique et la vitesse d'ascension d'un essaim de bulles, une étape intermédiaire cruciale a consisté à réaliser le couplage numérique des deux modules précédents. Cette phase a nécessité le développement d'une stratégie d'interopérabilité entre le solveur Navier-Stokes centré (\texttt{centered.h}), requis pour le suivi d'interface diphasique, et la génération d'un champ de vorticité initialisé par fonction de courant (\texttt{stream.h}).
+
+ Le principal défi a résidé dans la projection d'un bruit blanc de vorticité 2D directement sous forme de fluctuations de vitesse de face ($u.x$ et $u.y$) à l'instant initial $t=0$.
+
+Bien que cette configuration soit restreinte à une approche 2D, elle constitue une introduction méthodologique avant d'aborder le problème 3D. En effet, la physique de la turbulence 2D est gouvernée par une cascade inverse d'énergie (fusion des structures vortex), tandis que la turbulence 3D introduit l'étirement des tubes de tourbillon (\textit{vortex stretching}) et une cascade directe vers les petites échelles dissipatives de Kolmogorov. Cette transition simplifiée a été instructive pour voir la sensibilité de l'interface déformable face aux tourbillons.
+
+\subsubsection{Défis d'implémentation et stabilité numérique}
+L'injection d'un champ turbulent initial dans un solveur incompressible diphasique avec un fort ratio de densité ($\rho_L/\rho_G = 1000$) présente des instabilités majeures. L'implémentation finale résulte de plusieurs itérations visant à contourner la divergence de l'équation de Poisson et l'explosion du solveur visqueux. Le programme actuel diverge drastiquement des deux premières approches tentées :
+
+\begin{itemize}
+    \item \textbf{Version 1 (Bruit blanc) :} L'injection d'un chaos aléatoire via une fonction de bruit a généré une divergence locale non nulle ($\nabla \cdot \mathbf{u} \neq 0$). Combinée au saut de densité à l'interface, la matrice de pression exigeait un gradient infini pour converger. Résultat : non-convergence du solveur de pression.
+    \item \textbf{Version 2 (Vortex Taylor-Green) :} Le remplacement par un champ analytique lisse (vortex de Taylor-Green, $A=0.5$) avec annulation de la vitesse stricte dans le gaz a recréé un mur de divergence sur l'interface. Le cisaillement initial trop violent a provoqué un déchirement numérique de la bulle.
+    \item \textbf{Version Actuelle (Champ global) :} Le champ de Taylor-Green traverse l'intégralité du domaine sans masquage de phase, garantissant l'incompressibilité.
+\end{itemize}
+
+\subsubsection{Synthèse des compromis numériques}
+Afin de maintenir la stabilité numérique et d'aboutir à un calcul viable, plusieurs sacrifices physiques ont été concédés, résumés dans le Tableau \ref{tab:sacrifices}.
+
+\begin{table}[hbt!]
+    \centering
+    \begin{tabular}{@{}p{4cm}p{4cm}p{7cm}@{}}
+    \toprule
+    \textbf{Objectif Initial} & \textbf{Modèle Actuel} & \textbf{Justification Numérique} \\ \midrule
+    Chaos complet & Taylor-Green & Le bruit génère une matrice insoluble. Taylor-Green assure $\nabla \cdot \mathbf{u} = 0$. \\
+    Forte turbulence ($A=0.5$) & Micro-vortex ($A=0.05$) & Limite le gradient de vitesse instantané. \\
+    Eau turbulente, gaz repos & Turbulence globale & Couper la vitesse à l'interface viole l'incompressibilité globale. \\
+    Performance temporelle & Bridage initial (\texttt{CFL=0.2}) & Force des micro-pas de temps pour dissiper l'énergie initiale. \\ \bottomrule
+    \end{tabular}
+    \caption{Compromis réalisés sur l'initialisation de la turbulence.}
+    \label{tab:sacrifices}
+\end{table}
+
+\subsubsection{Évolution temporelle du couplage}
+La Figure \ref{fig:evolution_bulle} illustre l'évolution de l'interface et du champ de vitesse au cours de la simulation.
+
+\begin{figure}[hbt!]
+    \centering
+    \begin{subfigure}[b]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{snap-5.png}
+        \caption{$t = 5.0$}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{snap-10.png}
+        \caption{$t = 10.0$}
+    \end{subfigure}
+\end{figure}
+\begin{figure}[hbt!]
+    \centering
+    \begin{subfigure}[b]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{snap-15.png}
+        \caption{$t = 15.0$}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{snap-20.png}
+        \caption{$t = 20.0$}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{snap-25.png}
+        \caption{$t = 25.0$}
+    \end{subfigure}
+    \hfill
+    \caption{Superposition de l'interface de la bulle et du champ de vitesse verticale $\mathbf{u}_y$ à différents instants de la simulation.}
+    \label{fig:evolution_bulle}
+\end{figure}
+
+\subsubsection{Turbulence forcée : Maintien de l'énergie cinétique}
+
+Pour étudier la dynamique de la bulle sous l'influence prolongée de structures tourbillonnaires et éviter l'extinction rapide du système, un modèle de turbulence forcée a été implémenté. 
+
+L'équation de quantité de mouvement a été modifiée par l'ajout d'un terme source de forçage continu à grande échelle :
+
+\begin{equation}
+    \frac{\partial \bm{u}}{\partial t} + (\bm{u} \cdot \nabla) \bm{u} = -\frac{1}{\rho}\nabla p + \nu \nabla^2 \bm{u} + \bm{F}_{TG} + \bm{g}
+\end{equation}
+
+La dynamique du fluide porteur repose dans cette configuration sur une compétition entre deux mécanismes :
+\begin{itemize}
+    \item \textbf{Production à l'échelle d'injection ($L_f \approx d_p$)} : Le forçage volumique $\bm{F}_{TG}$ injecte continuellement de l'énergie cinétique.
+    \item \textbf{Dissipation aux petites échelles ($\Delta x$)} : Le terme visqueux $\nu \nabla^2 \bm{u}$ dissipe naturellement une partie de cette énergie aux petites échelles.
+\end{itemize}
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{@{}p{3.5cm}p{3cm}p{7.5cm}@{}}
+    \toprule
+    \textbf{Mécanisme} & \textbf{Échelle spatiale} & \textbf{Rôle dans la simulation} \\ \midrule
+    Forçage ($\bm{F}_{TG}$) & $L_f = 1.0$ & Entretien continu du champ turbulent (résonance spatiale avec la bulle). \\
+    Viscosité ($\nu$) & Maille ($\Delta x$) & Dissipation des micro-structures cisaillées. \\ \bottomrule
+    \end{tabular}
+    \caption{Bilan des mécanismes de contrôle de l'énergie cinétique en régime de turbulence forcée simple.}
+    \label{tab:energie_stationnaire}
+\end{table}
+
+\subsubsection{Dynamique de l'interface en régime forcé}
+
+La Figure \ref{fig:evolution_bulle_forcee} illustre l'ascension de la bulle sous l'influence de ce nouveau champ turbulent forcé.
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{snap-5_1.png}
+        \caption{$t = 5.0$}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{snap-10_1.png}
+        \caption{$t = 15.0$}
+    \end{subfigure}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{snap-15_1.png}
+        \caption{$t = 0.0$}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{snap-20_1.png}
+        \caption{$t = 5.0$}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{snap-25_1.png}
+        \caption{$t = 15.0$}
+    \end{subfigure}
+    \caption{Évolution de l'interface et de la vitesse verticale en turbulence forcée stationnaire.}
+    \label{fig:evolution_bulle_forcee}
+\end{figure}

@@ -1,0 +1,108 @@
+\section{Méthodes numériques}
+\label{sec:methodes}
+
+\subsection{Solveur}
+\label{subsec:solveur}
+
+Nous utilisons le code \textsc{Basilisk}, un solveur d'équations aux dérivées partielles sur maillage octree adaptatif. Le code source écrit en C étendu (boucles \texttt{foreach}, opérateurs différentiels, événements temporels) est traduit en C standard par le précompilateur \texttt{qcc}, puis compilé avec \texttt{mpicc} pour l'exécution parallèle. Les simulations tournent sous MPI sur le cluster CALMIP (projet Kairos, IMFT). Ce solveur a déjà fait ses preuves pour les écoulements diphasiques turbulents à interface déformable, notamment sur la déformation~\cite{perrard2021} et la fragmentation~\cite{riviere2021} de bulles, l'ascension d'une bulle en THI~\cite{liu2024} ou la fragmentation de gouttes visqueuses~\cite{farsoiya2023}. Nous reprenons ici la même méthodologie.
+
+Le système diphasique fluide/gaz est incalculable sous forme séparée sans approximations lourdes. Nous le résolvons donc avec une formulation « un fluide ». Un seul champ de vitesse $\mathbf{u}$ et un seul champ de pression $p$ décrivent tout le domaine :
+\begin{align}
+    \rho\left(\partial_t \mathbf{u} + \mathbf{u}\cdot\nabla\mathbf{u}\right)
+        &= -\nabla p + \nabla\cdot\left(2\mu\,\mathbf{D}\right)
+           + \sigma\,\kappa\,\delta_s\,\mathbf{n} + \rho\,\mathbf{a}, \\
+    \nabla\cdot\mathbf{u} &= 0,
+\end{align}
+avec $\mathbf{D}$ le tenseur des taux de déformation, $\sigma\kappa\delta_s\mathbf{n}$ la force de tension superficielle localisée à l'interface (courbure $\kappa$, normale $\mathbf{n}$) et $\mathbf{a}$ un terme d'accélération volumique (gravité et forçage turbulent). La densité $\rho$ et la viscosité $\mu$ varient brutalement à la traversée de l'interface. Elles dépendent de la fraction volumique $f$, suivie par la méthode \textbf{Volume-Of-Fluid} (VOF) :
+\begin{equation}
+    \partial_t f + \nabla\cdot(f\,\mathbf{u}) = 0, \qquad
+    \rho = f\,\rho_1 + (1-f)\,\rho_2, \qquad
+    \mu = f\,\mu_1 + (1-f)\,\mu_2,
+\end{equation}
+où $f=1$ correspond au liquide et $f=0$ au gaz. L'interface est reconstruite géométriquement à chaque pas de temps par un plan coupe-maille (reconstruction linéaire par morceaux). Cela évite de l'étaler numériquement et maintient son épaisseur sur une à deux mailles au cours du temps.
+
+\paragraph{Advection conservant la quantité de mouvement.} Notre rapport de densité liquide/gaz est fort ($\rho_1/\rho_2 = 850$). Si l'on transporte $f$ par de la géométrie mais qu'on advecte la vitesse $\mathbf{u}$ séparément avec un schéma classique, on crée un décalage entre le flux de masse et le flux de quantité de mouvement. Cela produit des courants parasites et de l'instabilité près de la bulle. Pour éviter ce problème, Basilisk utilise un schéma VOF qui conserve la quantité de mouvement \cite{popinet2009} : le même flux géométrique qui déplace $f$ sert aussi à transporter $\rho\mathbf{u}$. C'est indispensable pour stabiliser nos calculs.
+
+\paragraph{Tension superficielle.} Nous modélisons la tension superficielle via une force de surface continue (CSF) sous forme équilibrée (\emph{balanced-force}). Cette formulation annule exactement le gradient de pression et le saut de Laplace à l'équilibre au niveau discret, ce qui bloque l'apparition de courants parasites sur une interface peu déformée. La courbure locale est calculée par la méthode des fonctions de hauteur.
+
+\paragraph{Maillage adaptatif.} La discrétisation repose sur une grille \textbf{octree}, raffinée localement grâce à la fonction \texttt{adapt\_wavelet}. À chaque pas de temps, l'algorithme évalue l'erreur d'estimation en ondelettes sur des champs cibles (fraction volumique, vorticité). Si l'erreur dépasse un seuil donné, la maille est divisée ; si elle repasse en dessous d'une fraction de ce seuil, la maille est fusionnée. Cet effet d'hystérésis évite que le maillage ne clignote d'un pas de temps à l'autre. La résolution se concentre donc d'elle-même sur l'interface et les tourbillons, tout en restant grossière dans le reste du domaine. Les champs et les seuils utilisés changent selon la phase de simulation et sont détaillés en section \ref{subsec:forcage} et \ref{subsec:protocole}.
+
+Le domaine de calcul est un cube triplement périodique de côté $L_0 = 120$ (unités code). Nous y plaçons une unique bulle sphérique de rayon $R_0 = 8$ ($D=16$, soit un rapport $L_0/D = 7{,}5$) au centre. Pour le parallélisme MPI, Basilisk découpe l'arbre octree le long d'une courbe de remplissage de l'espace et rééquilibre la charge entre les processeurs au fil du calcul.
+
+\subsection{Génération de la turbulence : forçage linéaire contrôlé}
+\label{subsec:forcage}
+
+Nous entretenons la turbulence homogène isotrope (THI) par un forçage en espace physique, proportionnel à la vitesse locale du liquide. Proposé par \cite{rosales2005} et disponible dans l'exemple \texttt{isotropic.c} de Basilisk \cite{basilisk_isotropic}, ce principe produit une THI de qualité comparable à celle d'un code spectral. Nous utilisons ici la variante à énergie contrôlée de \cite{bassenne2016} : au lieu d'imposer une force fixe, l'algorithme vise directement une énergie cinétique cible (\texttt{KE\_TARGET}). À chaque pas de temps, nous appliquons une accélération :
+\begin{equation}
+    \mathbf{a}_{\text{forçage}} = A\,\left(\mathbf{u} - \overline{\mathbf{u}}\right),
+    \qquad
+    A = \frac{\varepsilon + \dfrac{\texttt{KE\_TARGET} - k}{\tau}}{2\,k},
+    \qquad \tau = \frac{k}{\varepsilon},
+    \label{eq:forcage}
+\end{equation}
+où $k$ et $\varepsilon$ sont l'énergie cinétique et sa dissipation, mesurées sur le champ au pas précédent (ce qui reste négligeable devant le temps de retournement). La puissance injectée ($2Ak$) équilibre la dissipation à l'état stationnaire. L'intensité turbulente devient alors une simple variable d'entrée fixée par l'utilisateur, ce qui nous permet de la balayer facilement au cours de l'étude.
+
+\paragraph{Condition initiale.} Un simple mode ABC (Arnold--Beltrami--Childress) reste une solution stationnaire des équations d'Euler : le terme advectif se réduit à un gradient de pression. Injecter de l'énergie sur un tel champ ne fait qu'amplifier une structure figée, sans jamais lancer la cascade turbulente. Nous démarrons donc avec une superposition de trois modes ABC aux nombres d'onde $k=1,2,3$ (pondérés par $w_k = \{1;\,0{,}7;\,0{,}5\}$ et remis à l'échelle de l'énergie cible), avec $10\,\%$ de bruit blanc. La non-linéarité casse la symétrie et déclenche la cascade en quelques temps de retournement, ce que l'on observe très bien sur la montée du taux de dissipation $\varepsilon$.
+
+\paragraph{Adaptation de maillage.} Durant la phase précurseur monophasique, nous gardons un maillage uniforme. Adaptativement raffiner un écoulement transitoire n'a pas d'intérêt et risque de couper des structures en formation. Une fois l'état stationnaire atteint, nous activons l'adaptation uniquement sur la vorticité $|\bm{\omega}|$. Le seuil d'erreur en ondelettes est réglé en fonction de la vorticité moyenne du champ, ce qui adapte automatiquement la grille peu importe la valeur de \texttt{KE\_TARGET}.
+
+\subsection{Protocole précurseur $\to$ injection}
+\label{subsec:protocole}
+
+Nous n'injectons pas la bulle dès le début de la simulation. Le protocole se déroule en deux étapes, selon la méthode développée par le groupe de Deike pour l'étude des bulles en THI \cite{riviere2021,liu2024} et basée sur les exemples \texttt{bubble.c} \cite{basilisk_bubble} et \texttt{turbulent\_bubble.c} \cite{basilisk_turbbubble} de Basilisk :
+
+\begin{enumerate}
+    \item \textbf{Précurseur (phase monophasique, $f=1$ partout) :} nous laissons la turbulence se développer à partir du champ multi-modes initial. Une fois le régime stationnaire atteint à l'énergie \texttt{KE\_TARGET} voulue, nous sauvegardons l'état complet du calcul (vitesse et maillage) dans un fichier de reprise (\emph{dump}).
+    
+    \item \textbf{Injection de la bulle (phase diphasique) :} nous repartons du champ précurseur. Avant d'initialiser la bulle, nous raffinons le maillage dans la zone d'injection pour bien la résoudre dès le premier pas de temps. Nous imposerons ensuite la fraction volumique d'une sphère de rayon $R_0$ au centre du domaine, puis nous activons les équations diphasiques (tension superficielle, gravité, forçage) pour observer la remontée et la déformation.
+\end{enumerate}
+
+Cette approche garantit que la bulle entre dans une turbulence déjà mature, dont les grandeurs clés ($k$, $\varepsilon$, $Re_\lambda$, $\eta$) sont parfaitement mesurées. On évite ainsi de polluer les mesures avec le régime transitoire de création de la turbulence. De plus, la gravité n'impactant pas le champ monophasique, nous pouvons réutiliser un même précurseur pour tester plusieurs jeux de paramètres (tension superficielle, flottabilité) sans réinitialiser la turbulence à chaque fois.
+
+\subsection{Gravité compatible avec la périodicité}
+\label{subsec:gravite}
+
+Notre domaine étant triplement périodique, nous ne pouvons pas utiliser la formulation usuelle en gravité réduite. Cette dernière exprime la poussée d'Archimède via un potentiel $\phi = [\rho]\,\mathbf{g}\cdot(\mathbf{x}-\mathbf{Z})$, linéaire selon $z$ et donc incompatible avec la périodicité aux frontières du domaine ($z=0 \leftrightarrow z=L_0$). Appliquer ce potentiel sur une frontière périodique génère une force parasite dès que la bulle la traverse (nous le montrons en détail dans la section de validation).
+
+Pour contourner ce problème, nous définissons la gravité comme une force volumique périodique en retranchant la densité moyenne du domaine $\rho_m = \langle\rho\rangle$ :
+\begin{equation}
+    \rho\,\mathbf{a} = \left(\rho - \rho_m\right)\mathbf{g}
+    \qquad\Longleftrightarrow\qquad
+    a_z = -g\left(1 - \frac{\rho_m}{\rho}\right).
+    \label{eq:force_perio}
+\end{equation}
+
+Cette approche offre trois avantages directs :
+\begin{enumerate}
+    \item La force dépend uniquement de la densité localement périodique $\rho(\mathbf{x})$. La bulle peut donc traverser les limites du domaine sans créer d'artefact.
+    \item Sa moyenne volumique est nulle ($\int_V (\rho-\rho_m)\,\mathbf{g}\,\mathrm{d}V = 0$). Elle n'injecte aucune quantité de mouvement globale dans la boîte, ce qui est obligatoire en périodique.
+    \item En phase monophasique ($\rho=\rho_m$), le terme $a_z$ s'annule exactement. La gravité n'impacte pas le précurseur turbulent, ce qui nous permet de réutiliser le même champ monophasique pour varier Bond et Weber.
+\end{enumerate}
+
+En contrepartie, cette formulation perd le caractère \emph{well-balanced} : la bulle subit une accélération apparente en $g\,\rho_m/\rho_2$, équilibrée au niveau du solveur de pression plutôt qu'au niveau discret exact. C'est le compromis nécessaire pour conserver la périodicité. Nous validons ce choix sur un cas test dédié dans la section suivante.
+
+\subsection{Repère mobile}
+\label{subsec:repere}
+
+Lorsque la bulle traverse plusieurs fois le domaine périodique, les erreurs d'advection VOF s'accumulent à chaque franchissement de mailles. À terme, cette dérive altère le volume de la bulle et biaise sa vitesse d'ascension.
+
+Pour résoudre ce problème, nous exploitons l'invariance galiléenne : retrancher une vitesse uniforme au champ conserve la dynamique de l'écoulement relatif. Le solveur suit donc la bulle en la centrant dans le domaine, la vitesse du repère s'ajustant avec un temps de relaxation $\tau_f$ :
+\begin{equation}
+    u_z \;\leftarrow\; u_z - \delta, \qquad
+    \delta = \frac{\mathrm{d}t}{\tau_f}\,\overline{u_z}\big|_{\text{gaz}},
+    \qquad
+    U_f \;\leftarrow\; U_f + \delta,
+    \label{eq:repere_mobile}
+\end{equation}
+où $\overline{u_z}|_{\text{gaz}}$ est la vitesse verticale moyenne du gaz et $U_f$ la vitesse cumulée du repère. La position au laboratoire s'obtient par intégration ($z_{\text{lab}}(t) = \int U_f\,\mathrm{d}t$), et la vitesse terminale $u_\infty$ correspond à la valeur stabilisée de $U_f$ (enregistrée dans \texttt{frame.dat}).
+
+Le choix d'une relaxation progressive sur $\tau_f$ (de l'ordre de l'unité de temps) évite les accélérations d'entraînement brutales, sources de forces d'inertie parasites. Une fois le régime établi atteint, $U_f$ devient constant, le repère redevient strictement galiléen et la correction $\delta$ s'annule.
+
+Nous contrôlons ce changement de repère via un suivi de la quantité de mouvement globale dans le repère du laboratoire (\texttt{momentum.dat}). Reconstruite avec la vitesse $U_f$, cette quantité de mouvement doit rester nulle sur tous les axes. Cela garantit qu'aucune force numérique non physique ne vient fausser le bilan global.
+
+\subsection{Mesures d'ensemble}
+\label{subsec:ensemble}
+
+À nombre de Bond fixé, nous balayons l'intensité turbulente en faisant varier \texttt{KE\_TARGET}, en générant un précurseur dédié à chaque valeur (sous-section~\ref{subsec:protocole}). Une seule simulation ne suffit pas pour extraire la vitesse moyenne : dès que les fluctuations de vitesse $u'$ atteignent environ $50\,\%$ de la vitesse d'ascension $u_\infty$, le bruit turbulent masque la valeur moyenne.
+
+Pour chaque condition, nous exécutons donc $n=5$ réalisations indépendantes issues du même précurseur. Pour cela, nous décalons la position d'injection de la bulle dans le plan horizontal. Chaque essai sonde ainsi une région différente du champ turbulent. Nous faisons ensuite la moyenne d'ensemble des vitesses terminales obtenues et calculons l'erreur standard associée, ce qui permet de distinguer les effets physiques des simples fluctuations statistiques.

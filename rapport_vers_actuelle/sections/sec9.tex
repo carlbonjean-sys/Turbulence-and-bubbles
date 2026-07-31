@@ -1,0 +1,986 @@
+\newpage
+\section{Campagne à intensité turbulente variable et mise en évidence d'un
+artefact de gravité en domaine périodique}
+\label{sec:designA}
+
+% ============================================================================
+%  REECRIT le 2026-07-16. La campagne Design A a donne "pas de vitesse terminale"
+%  a toutes les intensites ; le run LAMINAIRE de reference a revele que ce
+%  comportement existe AUSSI en fluide au repos => ce n'etait pas la turbulence
+%  mais un ARTEFACT NUMERIQUE (reduced.h incompatible avec la periodicite selon g).
+%  Les vitesses d'ascension de TOUTE la campagne sont invalidees ; le correctif est
+%  implemente et VALIDE (2026-07-22/24) sur quatre axes independants :
+%    (1) convergence en maillage du cas laminaire a trois niveaux : u_inf = 10,93
+%        (lvl6, delta/dx=0,87) / 12,274 (lvl7, 1,64) / 12,314 (lvl8, 3,28), soit
+%        +0,32 % de lvl7 a lvl8 => le niveau 7 de production est converge ;
+%    (2) courants parasites : u_max = 0,0093 a lvl7, soit 0,08 % de u_inf ;
+%    (3) saut de Laplace vs 2 sigma/R = 255,7 : +1,8 % (lvl7), +0,48 % (lvl8) ;
+%    (4) biais de sillage propre : -0,8 %, BORNE (le sillage sature), deux
+%        methodes concordantes a 0,08 point.
+%  Ne PAS reintroduire les conclusions "la turbulence supprime la remontee" :
+%  c'etait l'epinglage sur la frontiere.
+%
+%  ATTENTION (correctif du 2026-07-22, event bubble de src/main.c) : jusqu'a cette
+%  date le diagnostic ne sommait que sur les mailles taguees (f<0,5) et jetait la
+%  moitie exterieure de la bande d'interface => volume sous-estime de ~4,6 points
+%  et vitesse verticale biaisee de +0,35. Tout chiffre de volume "93-97 %" lu dans
+%  un bubble.dat a 13 colonnes est un ARTEFACT DE MESURE : le VOF conserve a ~99 %.
+% ============================================================================
+
+Cette section rend rigoureuse la \og{}Série Intensité\fg{} esquissée plus haut :
+on cherche à répondre à la question centrale du stage --- \emph{une turbulence
+homogène isotrope accélère-t-elle ou ralentit-elle la remontée d'une bulle ?} ---
+en faisant varier l'\textbf{intensité} de la turbulence, tous les autres
+paramètres étant tenus fixes. Elle rapporte aussi, et surtout, la
+\textbf{découverte d'un artefact numérique} qui invalide les vitesses
+d'ascension mesurées jusqu'ici et dont la correction conditionne toute la suite.
+
+\subsection{Cadre adimensionnel : trois nombres indépendants}
+
+Le problème (à rapports de densité $\rho_1/\rho_2=850$ et de viscosité
+$\mu_1/\mu_2=100$ fixés, géométrie fixée) fait intervenir six grandeurs
+dimensionnelles : $g$, $\sigma$, $\nu$, $\varepsilon$ (dissipation turbulente),
+$\rho$ et $D$. Le théorème de Vaschy--Buckingham ($6$ variables $-\,3$ dimensions
+$M,L,T$) donne donc \textbf{exactement trois groupes sans dimension
+indépendants}. On les choisit comme :
+\begin{align}
+    \text{Bond :}    \quad & Bo = \frac{(\rho_1-\rho_2)\,g\,D^2}{\sigma}, \\
+    \text{Weber turbulent :} \quad & We_t = \frac{\rho\,\overline{\delta u^2}(D)\,D}{\sigma}
+        \;\simeq\; \frac{2\rho\,\varepsilon^{2/3} D^{5/3}}{\sigma}, \\
+    \text{Reynolds turbulent :} \quad & Re_\lambda = \frac{u'\lambda}{\nu}.
+\end{align}
+Le quatrième nombre usuel, le \textbf{Galilée} $Ga = \sqrt{g D^3}/\nu$ (ou de façon
+équivalente le Morton $Mo = Bo^3/Ga^4$), n'est alors \emph{pas} libre : il est
+\textbf{déterminé} par les trois autres. La définition de $We_t$ et le seuil de
+rupture associé $We_{tC}=\mathcal{O}(1)$ suivent la revue de
+\cite{legendre2025} (Éqs. 53--55).
+
+À ces trois nombres correspondent trois boutons du solveur, réglés
+indépendamment (arguments positionnels de \texttt{bubble}) :
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lll}
+    \toprule
+    Bouton (arg.) & Règle & Effet de bord \\
+    \midrule
+    \texttt{BOND} & $Bo$ (exactement $Bo=$\,\texttt{BOND}) & --- \\
+    \texttt{GRAV} $=|g|$ & $We_t$ à $Bo$ fixe ($We_t\propto 1/g$) & $Ga$ (dérivé) \\
+    \texttt{NU} $=\nu$ & $Re_\lambda$ ($\nu\!\downarrow\Rightarrow Re_\lambda\!\uparrow$) & $Ga$ (dérivé) \\
+    \texttt{KE\_TARGET} $\to\varepsilon$ & intensité réelle & $We_t$ \emph{et} $Re_\lambda$ \\
+    \bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Choix du Design A.} On fait varier l'\textbf{intensité réelle} de la
+turbulence via \texttt{KE\_TARGET}, à $Bo=1$ et $Ga\simeq 35$ \textbf{fixes}. Comme
+un seul bouton ($\varepsilon$) pilote la turbulence, $We_t$ et $Re_\lambda$ montent
+\textbf{ensemble} et ne peuvent être découplés : $We_t\propto\varepsilon^{2/3}$
+(vite) et $Re_\lambda\propto\varepsilon^{1/6}$ (lentement).
+
+\subsection{Protocole numérique : un précurseur par intensité}
+
+Chaque intensité exige sa propre turbulence \emph{stationnaire}. Le pipeline est
+donc à deux étages par point : (i) \textbf{précurseur} (\texttt{INJECT=0},
+monophasique) qui reprend le champ \texttt{end\_we1} ($t=76$) et ré-équilibre la
+turbulence à la nouvelle valeur de \texttt{KE\_TARGET} jusqu'à $t=160$ ;
+(ii) \textbf{bulle} (\texttt{INJECT=1}) injectée dans cet état stationnaire et
+laissée remonter jusqu'à $t=310$ ($150$ u.t.). Maillage adaptatif
+(\texttt{maxlevel}~$=7$), critère \texttt{adapt\_wavelet} sur $\{f, |\omega|\}$,
+plancher au niveau $5$.
+
+\subsection{Résolution des échelles turbulentes}
+
+Le tableau~\ref{tab:designA_resol} donne les échelles \textbf{mesurées} sur les
+précurseurs équilibrés. Ces résultats restent \textbf{valides} : ils concernent la
+phase monophasique, que l'artefact décrit plus bas n'affecte pas. Le critère
+$k_{max}\,\eta > 1{,}5$ ($k_{max}=\pi\,2^7/L_0 = 3{,}35$) est vérifié partout, de
+$7{,}7$ (we03) à $3{,}9$ (we20). Les $We_t$ réels collent aux cibles et
+$Re_\lambda$ ne varie que de $18$ à $29$ (facteur ${\sim}1{,}6$) quand $We_t$ varie
+d'un facteur~$6$ : le \textbf{verrouillage $We_t$--$Re_\lambda$} du Design A est
+confirmé numériquement.
+
+Point important pour le positionnement dans la littérature : nos précurseurs se
+situent \textbf{dans le régime des DNS de référence}. \cite{legendre2025}
+rapportent pour la DNS de Loisy \& Naso~\cite{loisy2017} $\eta/D\simeq0{,}098$, $\lambda/D\simeq1{,}0$
+et $L_i/D\simeq2{,}1$ ; nous obtenons respectivement ${\simeq}0{,}09$--$0{,}11$,
+${\simeq}0{,}9$--$1{,}1$ et ${\simeq}1{,}5$--$1{,}8$. La bulle est donc bien une
+\textbf{grande bulle} ($\eta < D < L_i$), régime que la revue identifie comme une
+\textbf{question ouverte}.
+
+\begin{table}[htbp]
+    \centering
+    \renewcommand{\arraystretch}{1.3}
+    \begin{tabular}{lcccccccccc}
+        \toprule
+        Run & $We_t$ & $k$ & $\varepsilon$ & $Re_\lambda$ & $\eta$ & $\lambda$ & $L$ & $\tau$ & $k_{max}\eta$ & $D/\eta$ \\
+        \midrule
+        we03 & 0.3 & 5 & 0.22 & 19 & 2.29 & 19.6 & 25 & 21 & 7.7 & 7.0 \\
+        we07 & 0.7 & 11 & 0.59 & 25 & 1.79 & 17.5 & 29 & 17 & 6.0 & 8.9 \\
+        we13 & 1.4 & 21 & 1.72 & 27 & 1.37 & 13.9 & 25 & 11 & 4.6 & 11.7 \\
+        we16 & 1.5 & 25 & 2.03 & 29 & 1.31 & 13.9 & 27 & 11 & 4.4 & 12.2 \\
+        we20 & 2.1 & 32 & 3.29 & 29 & 1.17 & 12.3 & 23 & 8 & 3.9 & 13.7 \\
+        \bottomrule
+    \end{tabular}
+    \caption{Échelles turbulentes \emph{mesurées} des 5 précurseurs à l'équilibre
+    ($\eta$ Kolmogorov, $\lambda$ Taylor, $L$ intégrale, $\tau=k/\varepsilon$ ;
+    unités code). Résolution $k_{max}\eta>1{,}5$ partout. \textbf{Ces résultats
+    ne sont pas affectés par l'artefact} (phase monophasique).}
+    \label{tab:designA_resol}
+\end{table}
+
+\subsection{Un résultat suspect, puis sa réfutation par le cas laminaire}
+
+\paragraph{Le constat initial.} Les cinq points ont tourné sans incident : aucun
+NaN et \textbf{aucune fragmentation} --- une seule région gazeuse taguée sur toute
+la fenêtre, là où une rupture ferait chuter brutalement le volume de la région mère
+(cf.\ le run $KE=200$, $-88\%$). Le volume \emph{rapporté} à l'époque
+($93{,}6$ à $96{,}5\%$ du théorique) sous-estimait toutefois systématiquement le
+volume réel d'environ $4{,}6$ points, pour une raison purement instrumentale
+détaillée plus bas (\S\ref{subsec:biais_volume}) : recalculé par sommes complètes,
+il est conservé à $\ge97{,}1\%$ sur la campagne turbulente et à $\ge99\%$ sur le cas
+laminaire. Mais la vitesse
+de remontée nette, mesurée par régression de $z(t)$ au-delà du transitoire, est
+\textbf{nulle à toutes les intensités} : $U_b\in[-0{,}22,\,+0{,}15]$, avec des
+\emph{signes qui s'inversent} d'un point à l'autre. Le scénario est identique
+partout (fig.~\ref{fig:designA_terminal}) : la bulle monte de ${\sim}50$ unités en
+${\sim}20$ u.t., puis sa montée nette s'annule. L'interprétation tentante était
+\og{}la turbulence supprime la remontée moyenne\fg{}.
+
+\paragraph{Le test qui réfute.} Pour disposer de la vitesse de référence $u_\infty$
+en fluide au repos --- indispensable au paramètre central du domaine
+$\beta = u'/u_\infty$ \cite{legendre2025} --- un run \textbf{laminaire} a été
+réalisé : même bulle, même $g$, mais liquide \emph{au repos} (vitesse annulée
+partout à l'injection, forçage désactivé). Le champ reste effectivement quiescent
+($k$ initial nul à la précision machine, $k\simeq10^{-3}$ en fin de run : le seul
+sillage de la bulle). Or \textbf{la bulle s'y comporte exactement de la même
+façon} (tab.~\ref{tab:lam_artefact}) : elle accélère jusqu'à $u_z\simeq12$, monte
+$53{,}4$ unités, puis $u_z$ \emph{devient négatif} et elle se \textbf{fige} pour
+les $140$ u.t. restantes.
+
+\begin{table}[htbp]
+    \centering
+    \renewcommand{\arraystretch}{1.3}
+    \begin{tabular}{lcccccc}
+        \toprule
+        $t$ & 162 & 165 & 170 & 175 & 190 & 310 \\
+        \midrule
+        montée $z(t)-z_0$ & 10.6 & 42.5 & 54.2 & 53.6 & 53.3 & \textbf{53.4} \\
+        $u_z$ & $+9{,}0$ & $+11{,}9$ & $\mathbf{-3{,}6}$ & $-1{,}4$ & $-0{,}1$ & $\mathbf{+0{,}02}$ \\
+        \bottomrule
+    \end{tabular}
+    \caption{Run \textbf{laminaire} (liquide au repos, $g=4$, $Bo=1$). Une bulle
+    flottante en fluide quiescent doit monter indéfiniment à sa vitesse terminale.
+    Elle s'arrête : le comportement n'est donc \emph{pas} dû à la turbulence.}
+    \label{tab:lam_artefact}
+\end{table}
+
+\paragraph{Diagnostic : la gravité réduite est incompatible avec la périodicité
+selon $\mathbf{g}$.} Le module \texttt{reduced.h} exprime la poussée non pas comme
+une force volumique mais comme une force interfaciale dérivant du potentiel
+\begin{equation}
+    \phi = [\rho]\;\mathbf{G}\cdot(\mathbf{x}-\mathbf{Z}),
+    \label{eq:phi_reduced}
+\end{equation}
+\textbf{linéaire en $z$}, donc \textbf{non périodique} : il saute de $[\rho]\,g\,L_0$
+à la traversée de la frontière $z=L_0$. Dès que la bulle atteint le haut du
+domaine, une partie de son interface est à $z\lesssim L_0$ (où $\phi$ est maximal)
+et l'autre se replie en $z\gtrsim0$ (où $\phi$ est nul) : ce saut engendre une
+force parasite considérable qui \textbf{épingle la bulle sur la frontière}.
+
+La signature est sans appel : la bulle est injectée en $z_c=60$ et se fige en
+$z_c=113{,}4$, alors que $L_0 - R = 120 - 8 = 112$. Elle s'arrête donc
+\emph{exactement} lorsque son sommet atteint la frontière périodique. Et
+\textbf{tous} les runs du projet --- $We\!\approx\!1$ (lvl7 et lvl8), les cinq
+points Design A, le laminaire --- se figent à cette même position, quelle que soit
+l'intensité turbulente. Ce n'est pas de la physique, c'est de la géométrie.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{designA_terminal.png}
+    \caption{\textbf{Signature de l'artefact.} À gauche : moyenne cumulée
+    $U_{cum}(t)$, qui décroît vers $0$ sans jamais plateauer. À droite :
+    trajectoire verticale nette --- toutes les bulles montent ${\sim}50$ unités
+    puis stagnent ou sont ballottées \emph{autour de la même altitude}
+    $z_c\simeq L_0-R$. Le cas laminaire (non représenté ici) reproduit ce blocage
+    en l'absence totale de turbulence, ce qui établit l'origine numérique du
+    phénomène.}
+    \label{fig:designA_terminal}
+\end{figure}
+
+\subsection{Portée de l'artefact : ce qui tombe, ce qui reste}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{p{0.52\textwidth}l}
+    \toprule
+    Résultat & Statut \\
+    \midrule
+    Vitesses d'ascension $U_b$, \og{}absence de vitesse terminale\fg{},
+    \og{}la turbulence supprime la remontée\fg{} & \textbf{invalidés} (artefact) \\
+    Convergence en maillage lvl7$\approx$lvl8 sur $U_b$ & invalidée (les deux
+    s'épinglaient au même endroit) --- \textbf{refaite depuis} sur le cas laminaire
+    corrigé, cf.~\S\ref{subsec:convergence} \\
+    Coefficient de traînée $C_d$ & sans objet ($U_b$ non physique) \\
+    Précurseurs, caractérisation de la turbulence, tab.~\ref{tab:designA_resol} &
+    \textbf{valides} ($g$ n'agit pas en monophasique) \\
+    Non-fragmentation jusqu'à $We_t\simeq2{,}1$ & \textbf{à reconfirmer} (la bulle
+    était maintenue dans un champ de force parasite) \\
+    \bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Correctif : une poussée compatible avec la périodicité}
+
+On abandonne \texttt{reduced.h} au profit d'une \textbf{force volumique
+périodique}, obtenue en retranchant la densité moyenne $\rho_m$ du domaine :
+\begin{equation}
+    \rho\,\mathbf{a} = (\rho - \rho_m)\,\mathbf{g}
+    \qquad\Longleftrightarrow\qquad
+    a_z = -g\left(1 - \frac{\rho_m}{\rho}\right).
+    \label{eq:fix}
+\end{equation}
+Ses trois propriétés répondent exactement au problème :
+\begin{enumerate}
+    \item $\rho(\mathbf{x})$ est périodique, donc la force l'est aussi : \textbf{aucun
+    potentiel linéaire}, la bulle traverse la frontière et \emph{continue} de monter ;
+    \item sa moyenne est nulle, $\int(\rho-\rho_m)\,\mathbf{g}\,\mathrm{d}V = 0$ :
+    pas d'emballement de la quantité de mouvement totale, ce qu'exige un domaine
+    triplement périodique ;
+    \item en monophasique ($f=1$) on a $\rho=\rho_m$ donc $a_z=0$ \emph{exactement} :
+    le précurseur n'est pas affecté par $g$. \textbf{Les précurseurs déjà calculés
+    restent donc valides et réutilisables} --- seuls les runs bulle sont à refaire.
+\end{enumerate}
+Contrepartie assumée : la formulation n'est plus \emph{well-balanced} (la bulle
+reçoit $a_z\simeq g\,\rho_m/\rho_2$, équilibré par le gradient de pression via la
+projection, l'accélération nette valant ${\sim}2g$ du fait de la masse ajoutée).
+C'est le prix de la compatibilité périodique, et la formulation standard des DNS
+de bulles en boîte périodique.
+
+\paragraph{Validation : le test réfute l'artefact.} Le test décisif est le
+\emph{même} cas laminaire relancé avec \eqref{eq:fix}. Le contraste est sans
+ambiguïté (tab.~\ref{tab:fix_verdict}) : au lieu de se figer à $53{,}4$, la
+trajectoire dépliée croît \textbf{linéairement} ($R^2 = 0{,}9999$) sur
+$1889$ unités, soit \textbf{15,7 traversées} du domaine, et la vitesse se stabilise
+à $u_\infty = 12{,}6$ ($u_z = 13{,}1 \pm 0{,}5$). La bulle franchit la frontière
+périodique et poursuit son ascension : le comportement attendu d'une bulle
+flottante en fluide au repos est restauré.
+
+\begin{table}[htbp]
+    \centering
+    \renewcommand{\arraystretch}{1.3}
+    \begin{tabular}{lcc}
+        \toprule
+        Cas laminaire ($g=4$, $Bo=1$, $150$ u.t.) & \texttt{reduced.h} & Correctif \eqref{eq:fix} \\
+        \midrule
+        Montée nette (unités) & $53{,}4$ puis \textbf{figée} & $\mathbf{1889}$ \\
+        Traversées de domaine & $0$ & $\mathbf{15{,}7}$ \\
+        $u_z$ en fin de run & $0{,}02$ & $\mathbf{13{,}6}$ \\
+        Linéarité de $z(t)$ & --- & $R^2 = 0{,}9999$ \\
+        $u_\infty$ & non définie & $\mathbf{12{,}6}$ \\
+        \bottomrule
+    \end{tabular}
+    \caption{Verdict du correctif sur le cas limite laminaire.}
+    \label{tab:fix_verdict}
+\end{table}
+
+\paragraph{Validation croisée avec la littérature.} La bulle corrigée est
+ellipsoïdale et son taux de déformation est \emph{prédictible}. Cette première
+mesure ($u_\infty\simeq12{,}6$) est toutefois entachée par la dérive de volume
+signalée ci-dessous ; la confrontation quantitative à la théorie est donc reportée
+au run définitif à repère mobile (§\ref{subsec:theorie}), où le diamètre reste
+constant.
+
+\subsection{Un défaut que l'artefact masquait : la conservation du volume}
+\label{subsec:biais_volume}
+
+\paragraph{Avertissement préalable : deux effets à ne pas confondre.} Les chiffres
+de volume figurant dans les versions antérieures de ce document mélangeaient un
+\emph{biais de mesure} et une \emph{dérive physique}. Il faut les séparer.
+
+\begin{itemize}
+  \item \textbf{Un biais de mesure, constant, d'environ $4{,}6$ points.} Jusqu'au
+  \nobreak22 juillet 2026, l'\texttt{event bubble} du solveur construisait un
+  marqueur binaire $m=(f<0{,}5)$, le segmentait en régions connexes, puis ne sommait
+  que sur la région retenue. Or une maille à $f=0{,}6$ contient $40\%$ de gaz mais
+  n'est pas marquée : son gaz était \emph{jeté}. La bande d'interface faisant une à
+  deux mailles, cela revenait à écarter systématiquement sa moitié extérieure.
+  Mesuré sur \texttt{snapshot-200.00} du run laminaire : $806$ mailles ignorées,
+  $2038{,}1$ au lieu de $2134{,}7$, soit $4{,}5\%$ du volume. Le même défaut biaisait
+  la vitesse verticale de $+0{,}35$ ($2{,}8\%$ de $u_\infty$), et dans ce sens précis
+  parce qu'en repère mobile le liquide défile vers le bas : les mailles écartées,
+  les plus riches en liquide, sont les plus négatives, et les retirer relève la
+  moyenne. Tout volume \og{}$93$--$97\%$\fg{} lu dans un \texttt{bubble.dat}
+  à $13$ colonnes relève de cet artefact.
+  \item \textbf{Une dérive d'advection VOF, réelle et croissante.} Elle n'apparaît
+  que lorsque la bulle traverse effectivement le maillage, c'est-à-dire dans les runs
+  \emph{sans} repère mobile.
+\end{itemize}
+
+\paragraph{La dérive, une fois la mesure corrigée.} Le correctif de la poussée
+révèle donc un second problème, jusque-là \textbf{invisible} parce que la bulle
+épinglée ne parcourait que $53$ unités. Libérée, elle traverse le domaine seize fois
+en $150$ u.t., et son volume \textbf{croît de $\mathbf{98\%}$ à $\mathbf{122\%}$}
+du théorique (lecture brute $93{,}6\to116{,}1\%$, corrigée du biais ci-dessus).
+Le diagnostic est net : la croissance est \emph{lisse} en fonction du temps
+($R^2 = 0{,}99$), et non par paliers ; elle ne se produit donc pas aux traversées de
+frontière mais s'accumule continûment, au rythme de $\mathbf{1{,}2\%}$
+\textbf{par traversée de domaine} ($+12{,}5\%$ par $100$~u.t.). C'est une
+\textbf{erreur d'advection VOF}.
+
+Ce défaut préexistait : la bulle épinglée ne parcourait que $53$ unités, contre
+$1889$ à présent --- $35$ fois plus d'advection à travers le maillage. L'artefact
+le dissimulait. Il doit être résolu avant toute exploitation quantitative : un
+volume croissant est un diamètre croissant, donc une vitesse terminale qui dérive
+(on observe effectivement $u_z$ passer de $12{,}5$ à $13{,}7$).
+
+\subsection{Version actuelle du code : le repère mobile}
+
+La cause étant le \emph{déplacement de l'interface à travers la grille}, le remède
+est de supprimer ce déplacement plutôt que de raffiner indéfiniment. On exploite
+l'\textbf{invariance galiléenne} : retrancher une vitesse uniforme à tout le champ
+ne modifie pas la physique. On suit donc la bulle --- elle reste au centre du
+domaine, le liquide défile devant elle :
+\begin{equation}
+    u_z \leftarrow u_z - \delta, \qquad
+    \delta = \frac{\mathrm{d}t}{\tau_f}\,\overline{u_z}\big|_{\text{gaz}},
+    \qquad U_f \leftarrow U_f + \delta ,
+    \label{eq:frame}
+\end{equation}
+$U_f$ étant la vitesse cumulée du repère. Aucune information n'est perdue : la
+trajectoire de laboratoire est $z_{\text{lab}}(t) = \int U_f\,\mathrm{d}t$ et la
+vitesse terminale est $U_f$ à l'équilibre (fichier \texttt{frame.dat}).
+
+Trois points méritent d'être explicités :
+\begin{itemize}
+    \item \textbf{Pourquoi cela corrige le volume} : l'interface ne se déplace plus
+    dans le maillage, donc l'erreur d'advection VOF disparaît par construction.
+    \item \textbf{Pourquoi une relaxation} ($\tau_f = 1$~u.t.) plutôt qu'un recalage
+    brutal : un repère qui \emph{accélère} est non inertiel et introduit une
+    pseudo-force. À la vitesse terminale $U_f$ est constant, le repère est donc
+    inertiel et \eqref{eq:frame} est \emph{exact} ; la relaxation évite une
+    pseudo-force violente pendant le transitoire et préserve les fluctuations
+    turbulentes de la bulle. À l'équilibre $\overline{u_z}|_{\text{gaz}}\to0$ donc
+    $\delta\to0$ : pas de dérive parasite.
+    \item \textbf{Pourquoi conserver \eqref{eq:fix} plutôt que revenir à
+    \texttt{reduced.h}} : le repère mobile maintenant la bulle loin des frontières,
+    \texttt{reduced.h} redeviendrait techniquement utilisable (et bénéficierait de
+    son caractère well-balanced). Mais si le suivi décrochait --- en turbulence
+    intense, par exemple --- la bulle atteindrait la frontière et l'épinglage
+    reviendrait \emph{silencieusement}. La force volumique \eqref{eq:fix} est
+    robuste quelle que soit la position de la bulle ; c'est ce filet de sécurité qui
+    a été privilégié.
+\end{itemize}
+
+\paragraph{Verdict (run lvl7, $100$ u.t.).} Le test de cette version est, de
+nouveau, le \emph{même} cas laminaire ($g=4$, $Bo=1$), sur $t\in[160,260]$. Les
+trois attentes sont satisfaites simultanément (tab.~\ref{tab:frame_verdict}) :
+\begin{itemize}
+    \item la vitesse d'ascension se stabilise sur un \textbf{plateau net}
+    $u_\infty = 12{,}27$ (pente résiduelle $-2\times10^{-3}$/u.t. sur $[210,260]$),
+    lu directement dans \texttt{frame.dat} ; la bulle parcourt $z_{\text{lab}}=1219$
+    unités, soit $10{,}2$ traversées-équivalent de domaine ;
+    \item le \textbf{volume est conservé}. Mesuré correctement --- somme complète
+    pondérée $\int(1-f)\,\mathrm{d}V$ sur tout le domaine, et non sur les seules
+    mailles marquées (\S\ref{subsec:biais_volume}) --- il vaut $99{,}05\%$ du
+    théorique ($V_{\text{th}}=2144{,}7$) à $t=161$ et $99{,}88\%$ à $t=260$, soit une
+    dérive résiduelle de $\mathbf{+0{,}8\%}$ sur $100$~u.t. ($+0{,}6\%$ par
+    régression), contre $+12{,}5\%$ sans repère mobile. Le diamètre équivalent passe
+    de $15{,}95$ à $15{,}99$ pour $D=16$ : \textbf{constant à $0{,}3\%$ près}. Le
+    \og{}déficit initial de $6\%$\fg{} rapporté antérieurement n'existe pas --- c'était
+    le biais du diagnostic ; la morsure réelle de \texttt{fraction()} à l'injection
+    vaut $0{,}9\%$ ;
+    \item le \textbf{garde-fou de quantité de mouvement} (fichier
+    \texttt{momentum.dat}, ajouté pour cette campagne) confirme l'absence de force
+    parasite : en repère laboratoire $|p_x|,|p_y|\le4\times10^{-3}$ et
+    $|p_{z,\text{lab}}|\le0{,}04$, soit $0{,}35\%$ de $u_\infty$ sur tout le run.
+\end{itemize}
+
+\begin{table}[htbp]
+    \centering
+    \renewcommand{\arraystretch}{1.3}
+    \begin{tabular}{lcc}
+        \toprule
+        Cas laminaire ($g=4$, $Bo=1$) & Force volumique seule & \textbf{+ repère mobile} \\
+        \midrule
+        $u_\infty$ & $12{,}6$ (biaisé) & $\mathbf{12{,}27}$ (plateau) \\
+        Dérive de volume /$100$ u.t. & $+12{,}5\%$ & $\mathbf{+0{,}8\%}$ \\
+        Déplacement dans la grille & $1889$ u. ($16$ trav.) & ${\sim}0$ (bulle centrée) \\
+        qdm lab conservée ($p_{z,\text{lab}}/u_\infty$) & non diagnostiquée & $\mathbf{0{,}35\%}$ \\
+        \bottomrule
+    \end{tabular}
+    \caption{Apport du repère mobile sur le cas limite laminaire. La physique
+    ($u_\infty$) est préservée ; le volume cesse de dériver, ce qui rend $u_\infty$
+    fiable (diamètre constant).}
+    \label{tab:frame_verdict}
+\end{table}
+
+\subsection{Confrontation à la théorie}
+\label{subsec:theorie}
+
+Avec la valeur \emph{fiable} $u_\infty = 12{,}27$ (diamètre constant), la bulle
+laminaire se caractérise par
+\begin{equation}
+    Re_b = \frac{u_\infty D}{\nu} = 107, \quad
+    Fr = \frac{u_\infty}{\sqrt{gD}} = 1{,}53, \quad
+    We = \frac{\rho\,u_\infty^2 D}{\sigma} = 2{,}34, \quad
+    Ga = 70, \quad Mo = 4{,}1\times10^{-8}.
+\end{equation}
+
+\paragraph{Coefficient de traînée.} À l'équilibre poussée--traînée, le coefficient
+mesuré vaut
+\begin{equation}
+    C_D = \frac{4}{3}\,\frac{(\rho_1-\rho_2)\,g\,D}{\rho_1\,u_\infty^2} = 0{,}57.
+\end{equation}
+Il se situe \textbf{entre} les deux références classiques à $Re_b = 107$ : la
+corrélation de Mei \emph{et al.}~\cite{mei1994} pour une bulle \emph{propre} (interface
+mobile, $\lambda=\mu_2/\mu_1=0{,}01\ll1$), $C_D^{\text{propre}} = 0{,}35$, et celle
+de Schiller--Naumann pour une sphère \emph{solide} (interface rigide),
+$C_D^{\text{solide}} = 1{,}06$. L'excès de $62\%$ sur la bulle propre s'explique par
+deux effets qui augmentent tous deux la traînée : la \textbf{déformation oblate}
+($\chi = 1{,}38$, section frontale accrue) et le caractère \textbf{instationnaire du
+sillage} (trajectoire oblique, ci-dessous). L'ordre de grandeur et le
+positionnement entre les deux bornes sont donc physiquement cohérents.
+
+\paragraph{Déformation.} La corrélation de \cite{legendre2025} (Éq.~45),
+$\chi = [1 - (9/64)\,We\,(1+0{,}2\,Mo^{1/10})^{-1}]^{-1}$, prédit
+$\chi_{\text{préd}} = 1{,}47$ pour nos nombres, à comparer au
+$\chi_{\text{mes}} = 1{,}38$ mesuré : accord à $6\%$, \emph{sans aucun ajustement}.
+
+\subsection{La trajectoire oblique : une instabilité de sillage, pas un artefact}
+
+Une dérive horizontale subsiste, mais elle est de nature \textbf{différente} de la
+\og{}diagonale parfaite\fg{} du run sans repère : celle-ci croissait
+\emph{linéairement et sans borne} le long de l'axe \emph{exact} de la grille $(1,1)$
+(azimut $45^\circ$) --- signature d'une \textbf{erreur d'advection} systématique, désormais
+supprimée par le repère mobile. Ici, la dérive s'oriente selon un azimut
+${\simeq}66^\circ$ (rapport $\mathrm{d}y/\mathrm{d}x\simeq2{,}2$), \emph{non aligné} sur
+un axe du maillage, et sa vitesse reste modérée ($|u_h|$ de $5$ à $18\%$ de
+$u_\infty$ le long du run, moyenne ${\simeq}11\%$). Surtout, le garde-fou
+\texttt{momentum.dat} montre que la quantité de mouvement horizontale est
+\textbf{conservée} ($|p_x|,|p_y|\le4\times10^{-3}$) : cette dérive n'est donc pas due
+à une force parasite, c'est une \emph{redistribution interne} bulle/liquide.
+
+L'interprétation la plus probable est une \textbf{instabilité de trajectoire} du
+sillage : à $Bo=1$, le seuil de perte de la trajectoire rectiligne est
+$Ga_c\simeq44$ (diagramme $(Ga,Bo)$ de Cano-Lozano \& Magnaudet~\cite{canolozano2016}), et avec
+$Ga=70>Ga_c$ la bulle doit adopter un chemin oblique.
+
+\paragraph{Réserve levée.} Une version antérieure de ce document laissait ouverte
+la possibilité d'une \og{}composante numérique résiduelle\fg{} dans cette dérive.
+Deux mesures la ferment.
+
+\emph{(i) Les courants parasites sont négligeables.} Un cas dédié a été construit
+(\texttt{src/static\_bubble.c}) : une bulle sphérique au repos dans un liquide au
+repos, \textbf{sans gravité et sans forçage}, configuration dont la solution exacte
+est $\mathbf{u\equiv0}$ --- la tension de surface y est exactement équilibrée par le
+saut de Laplace. Toute vitesse mesurée est donc de l'erreur numérique pure. On
+obtient $u_{\max}=9{,}3\times10^{-3}$ à \texttt{lvl7}, soit $\mathbf{0{,}08\%}$ de
+$u_\infty$ : deux ordres de grandeur sous la dérive latérale observée. Le saut de
+pression numérique vaut $260{,}3$ contre $2\sigma/R=255{,}7$ attendu, soit $+1{,}8\%$
+($+0{,}48\%$ à \texttt{lvl8}), ce qui valide au passage l'implémentation de la
+tension de surface.
+
+\emph{(ii) La dérive latérale sature.} $|u_h|$ ne croît pas indéfiniment : elle
+s'installe en \textbf{cycle limite} borné, d'amplitude $[0{,}14;2{,}57]$ et de
+période ${\simeq}16{,}2$~u.t. --- exactement celle du lâcher tourbillonnaire
+($St = fD/u_\infty = 0{,}080$, dans la fourchette $0{,}05$--$0{,}15$ de la
+littérature). Une dérive numérique croîtrait sans borne ; un cycle limite à la
+fréquence du sillage est une signature physique.
+
+Point crucial, inchangé : cette dérive est \emph{perpendiculaire} à l'ascension et
+\textbf{n'affecte pas} la mesure de $u_\infty$.
+
+\subsection{Point de vigilance : l'interaction avec le sillage propre}
+
+Un dernier effet mérite d'être signalé --- et, cette fois, d'être \emph{chiffré}
+plutôt qu'écarté. En boîte triplement périodique, le sillage laissé par la bulle
+\textbf{se reboucle} et la bulle finit par le re-rencontrer : sur $100$ u.t. et
+${\sim}10$ traversées, l'énergie cinétique de fluctuation du liquide passe de
+$k\simeq0{,}05$ à $0{,}45$, alors qu'elle devrait rester nulle en fluide au repos.
+La \og{}référence en liquide quiescent\fg{} n'en est donc plus tout à fait une.
+
+\paragraph{Le biais est borné, et il vaut $-0{,}8\%$.} Deux points le montrent.
+D'abord, l'accumulation \textbf{sature} : $k$ atteint $0{,}45$ vers $t\simeq190$ puis
+plafonne, le sillage rebouclé trouvant un équilibre production/dissipation. Le biais
+n'est donc pas cumulatif, et allonger le run ne l'aggraverait pas. Ensuite, son
+amplitude se mesure de \textbf{deux façons indépendantes qui concordent} :
+\begin{itemize}
+    \item en traitant le sillage propre comme une turbulence de fond d'intensité
+    $\beta_{\text{sillage}}=u'_{\text{sillage}}/u_\infty=0{,}045$ et en l'injectant
+    dans la loi petit-$\beta$ ajustée sur nos propres points
+    (\S\ref{subsec:resultats_turb}), on prédit $-0{,}76\%$ ;
+    \item la dérive de $u_\infty$ directement mesurée sur $[220,260]$ vaut
+    $-0{,}84\%$.
+\end{itemize}
+Les deux méthodes s'accordent à $0{,}08$ point. Le biais de sillage est donc
+\textbf{un à deux ordres de grandeur sous le signal étudié} ($-6$ à $-39\%$) :
+c'est une limite à assumer explicitement, non un obstacle. Sur les points turbulents,
+l'ajouter en quadrature ($\beta_{\text{eff}}=\sqrt{\beta^2+\beta_{\text{sillage}}^2}$)
+déplace $\beta$ de $+4{,}4\%$ au point le plus faible à $+0{,}7\%$ au plus fort.
+
+Trois parades restent envisageables si l'on voulait le supprimer plutôt que le
+borner, par ordre de préférence :
+\begin{enumerate}
+    \item \textbf{pour la référence laminaire} : mesurer $u_\infty$ sur un plateau
+    précoce, avant que $k$ n'ait crû --- inutile ici, le biais étant chiffré ;
+    \item \textbf{pour un besoin de rigueur accrue} : une boîte plus grande
+    ($L_0/D\gtrsim12$ contre $7{,}5$ ici) laisse le sillage se dissiper avant de se
+    reboucler --- coûteux ($\times8$ en volume), à réserver à une vérification ponctuelle ;
+    \item \textbf{pour les runs turbulents} (l'objet du stage) : le problème
+    \emph{se résout de lui-même}, la turbulence forcée décorrélant et brisant le
+    sillage à chaque instant --- le sillage propre n'y est qu'une petite perturbation
+    sur un champ maintenu stationnaire (cf. la caractérisation \og{}couplage à sens
+    unique\fg{} déjà établie).
+\end{enumerate}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.48\textwidth]{lam7_still_vitesse.png}\hfill
+    \includegraphics[width=0.48\textwidth]{lam7_still_vorticite.png}
+    \caption{\textbf{Bulle laminaire corrigée} (état terminal, coupe $x$--$y$ à la
+    hauteur de la bulle, repère mobile). À gauche : champ de vitesse verticale $u_z$
+    (le liquide défile devant la bulle maintenue au centre) ; à droite : module de
+    vorticité $|\omega|$, révélant le sillage responsable de l'instabilité de
+    trajectoire oblique. Film complet : \texttt{lam7\_vitesse.mp4},
+    \texttt{lam7\_vorticite.mp4} (référence).}
+    \label{fig:lam7_film}
+\end{figure}
+
+\subsection{Convergence en maillage}
+\label{subsec:convergence}
+
+La convergence annoncée avant correction --- \og{}lvl7 $\approx$ lvl8 sur $U_b$\fg{} ---
+était sans valeur : les deux niveaux s'épinglaient sur la même frontière. Elle a été
+refaite proprement.
+
+\paragraph{Pourquoi sur le cas laminaire.} En turbulence, deux maillages diffèrent dès
+le premier pas de temps et le chaos amplifie l'écart exponentiellement : les
+\emph{trajectoires} divergent nécessairement, même lorsque les \emph{statistiques}
+convergent. Une étude de convergence point à point y est donc impossible par
+construction. Le cas laminaire, lui, est déterministe : la comparaison est licite, et
+elle isole l'effet du maillage de celui du chaos.
+
+\begin{table}[htbp]
+    \centering
+    \renewcommand{\arraystretch}{1.3}
+    \begin{tabular}{lcccccc}
+        \toprule
+        Niveau & $D/\Delta x$ & $\delta/\Delta x$ & $u_\infty$ & $Re_b$ & $C_D$ & $\chi$ \\
+        \midrule
+        6 & $8{,}5$  & $0{,}87$ & $10{,}93$  & $95{,}9$  & $0{,}713$ & $1{,}26$ \\
+        7 & $17{,}1$ & $1{,}64$ & $12{,}274$ & $107{,}7$ & $0{,}566$ & $1{,}38$ \\
+        8 & $34{,}1$ & $3{,}28$ & $12{,}314$ & $108{,}0$ & $0{,}562$ & $1{,}36$ \\
+        \bottomrule
+    \end{tabular}
+    \caption{Convergence en maillage du cas laminaire ($Bo=1$, $Ga=70$, mêmes
+    paramètres physiques aux trois niveaux). $\delta\sim D/\sqrt{Re_b}$ est
+    l'épaisseur de couche limite. Écart lvl6$\to$lvl7 : $+12{,}3\%$ ;
+    \textbf{lvl7$\to$lvl8 : $+0{,}32\%$}. Extrapolation de Richardson ($p=2$) :
+    $u_\infty\to12{,}33$, dont lvl7 est à $-0{,}4\%$.}
+    \label{tab:convergence}
+\end{table}
+
+\paragraph{Ce n'est pas l'interface qui pilote, c'est la couche limite.} Le tableau
+le montre : à \texttt{lvl6} la couche limite fait $0{,}87$ maille --- elle n'est pas
+résolue --- et $u_\infty$ est $12\%$ trop bas, $C_D$ $27\%$ trop haut. Dès
+$\delta/\Delta x\simeq1{,}6$ (\texttt{lvl7}), doubler encore la résolution ne change
+plus $u_\infty$ que de $0{,}3\%$. Le comptage usuel \og{}$D/\Delta x$\fg{} est donc
+trompeur : ce qui compte est la résolution de la couche limite, et $17$ mailles par
+diamètre y suffisent à ce $Re_b$.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{convergence_maillage.png}
+    \caption{\textbf{Convergence en maillage, cas laminaire.} En haut à gauche :
+    trajectoires $z_{\text{lab}}(t)$ superposées --- lvl7 et lvl8 sont confondues,
+    lvl6 décroche. En haut à droite : $u_\infty$ en fonction de $\delta/\Delta x$,
+    le paramètre qui gouverne réellement. En bas à gauche : vitesse instantanée ---
+    même transitoire (accélération initiale de masse ajoutée), même cycle limite,
+    seul le plateau de lvl6 est décalé.}
+    \label{fig:convergence_maillage}
+\end{figure}
+
+\begin{table}[htbp]
+    \centering
+    \renewcommand{\arraystretch}{1.25}
+    \input{sections/table_resolution}
+    \caption{Résolution des échelles turbulentes au niveau 7, point par point.
+    $k_{\max}\eta\ge1{,}5$ est le critère de DNS résolue ; le minimum de la campagne
+    vaut $3{,}92$.}
+    \label{tab:resol_turb}
+\end{table}
+
+\subsection{Convergence en maillage en turbulence : trajectoires divergentes,
+statistique convergée}
+\label{subsec:conv_turb}
+
+La convergence précédente était sur le cas laminaire, où il n'y a pas de chaos. Un
+tuteur avait soulevé, à juste titre, une objection plus profonde : sur les premiers
+runs turbulents, les niveaux 7 et 8 donnaient une vitesse d'ascension \emph{instantanée}
+quasi identique, oscillation par oscillation. C'est \emph{a priori} surprenant --- un
+écoulement turbulent est chaotique, deux maillages différents devraient envoyer la bulle
+sur des chemins distincts. Deux réponses, la première étant que cet accord-là était en
+partie un artefact.
+
+\paragraph{L'accord parfait d'origine était un épinglage.} Sur ces runs (antérieurs au
+correctif, avec \texttt{reduced.h}), les deux bulles étaient bloquées contre la même
+frontière $z_c\simeq L_0-R_0$. La corrélation entre leur accélération et leur écart à
+cette position vaut $-0{,}42$ : c'est la signature d'un \textbf{rappel élastique}, deux
+bulles oscillant dans le même puits de potentiel numérique --- situé en un point du
+domaine, indépendant du maillage. Elles battaient donc en phase. Et l'accord n'était que
+visuel : l'écart quadratique relatif entre les deux courbes passe de $1{,}4\%$ pendant la
+montée libre (dynamique déterministe de flottabilité, accord réel) à $88\%$ pendant la
+phase épinglée. La figure~\ref{fig:meme_vitesse} le décompose.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{pourquoi_meme_vitesse.png}
+    \caption{\textbf{Décomposition de l'accord d'origine} (runs $We_t\simeq1$
+    antérieurs au correctif). L'accord réel se limite à la montée libre ($t<85$,
+    déterministe). Après, les deux bulles sont épinglées au même mur (bas gauche) et y
+    oscillent en rappel élastique (bas milieu, pente négative) : leur ressemblance est
+    un artefact, l'écart quadratique atteignant $88\%$ (bas droite).}
+    \label{fig:meme_vitesse}
+\end{figure}
+
+\paragraph{Le vrai test, non épinglé.} On a donc refait trois runs turbulents
+\emph{strictement identiques sauf le maillage} (niveaux 6, 7, 8 ; même précurseur
+$KE=11$, $\beta=0{,}22$ ; \textbf{même position d'injection} ; pile corrigée). Le
+verdict sépare nettement les deux notions que la turbulence mélange
+(fig.~\ref{fig:conv_turb} et \ref{fig:traj}) :
+\begin{itemize}
+  \item les \textbf{trajectoires divergent} : partant du même point, l'écart horizontal
+  entre deux maillages croît de ${\sim}0{,}5$ à plus d'un diamètre en $40$~u.t. --- le
+  tuteur a raison, les chemins individuels ne sont pas reproductibles ;
+  \item mais la \textbf{statistique converge} : $Re_\lambda=22{,}3$ aux trois niveaux, et
+  la vitesse d'ascension moyenne vaut $7{,}9$ (lvl6), $11{,}5$ (lvl7) et $11{,}7$ (lvl8)
+  sur la fenêtre commune --- soit \textbf{lvl7 $\approx$ lvl8 à $2\%$ près} (dans la
+  dispersion de réalisation unique), tandis que \textbf{lvl6 décroche de $30\%$},
+  exactement comme en laminaire, sa couche limite ($0{,}87$ maille) et sa turbulence
+  ($k_{\max}\eta=2{,}9$) étant toutes deux à la limite.
+\end{itemize}
+\textbf{La convergence en maillage d'un écoulement turbulent porte donc sur les
+statistiques, jamais sur les trajectoires} --- ce qui justifie, et impose, les moyennes
+d'ensemble de la section suivante. (Le niveau 8 turbulent était encore en cours au moment
+de la rédaction : les valeurs le concernant sont provisoires, sur la fenêtre $[180,209]$
+commune aux trois.)
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{convergence_turbulente.png}
+    \caption{\textbf{Convergence en maillage en turbulence} ($\beta=0{,}22$, même
+    injection). Montée (haut gauche) : lvl7 et lvl8 ensemble, lvl6 en dessous. $u_\infty$
+    par niveau (haut droite) : lvl7 $\approx$ lvl8, lvl6 décroche. Trajectoires (bas
+    gauche) : elles divergent. Statistiques (bas milieu) : $Re_\lambda$ identique.
+    Résolution (bas droite) : Kolmogorov résolu dès lvl7.}
+    \label{fig:conv_turb}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{trajectoires_cote_a_cote.png}
+    \caption{\textbf{Trajectoires de la bulle aux trois maillages, côte à côte.} Même
+    turbulence, même point d'injection (cercle noir). Rangée du haut : l'errance
+    horizontale (vue de dessus) est \emph{différente} à chaque niveau. En bas : les
+    chemins superposés partent ensemble puis se séparent (gauche), la montée garde la même
+    pente moyenne (milieu), et la distance entre trajectoires dépasse un diamètre
+    (droite). Le chaos décorrèle les chemins ; seule la statistique converge.}
+    \label{fig:traj}
+\end{figure}
+
+\subsection{Perspective : mesurer enfin \texorpdfstring{$u_\infty$}{u\_inf} et le rapport
+\texorpdfstring{$\beta$}{beta}}
+
+Le correctif étant validé et $u_\infty = 12{,}27$ désormais \textbf{mesuré}, la
+campagne \texttt{weber\_rise} reprend le protocole dans le cadre du domaine
+\cite{legendre2025} : à \textbf{gravité fixe} ($g_0=4$, $Ga\simeq70$, $Bo=1$), le
+run laminaire fournit $u_\infty$ et les runs turbulents balayent l'intensité sur les
+précurseurs déjà disponibles. Le livrable est la courbe
+$\overline{u_\infty}/u_\infty$ en fonction de $\beta = u'/u_\infty$ et du Froude
+turbulent $Fr' = u'/\sqrt{gD}$, directement comparable aux figures~24 et~27(d) de la
+revue, où la littérature rapporte une \textbf{réduction} de la vitesse de remontée
+(${\sim}35\%$ chez Poorte \& Biesheuvel) suivant
+$\overline{u_\infty}/u_\infty - 1 \sim \beta^2$ à petit $\beta$, puis
+$\overline{u_\infty}/u_\infty \sim 1/Fr'$ à grand $\beta$.
+
+\paragraph{Plage de $\beta$ réellement accessible.} Un point important, que seule la
+mesure de $u_\infty$ permet de trancher : avec $u_\infty=12{,}27$ et les cinq
+précurseurs disponibles ($u' = \sqrt{2k/3}$ de $1{,}8$ à $4{,}6$), le rapport
+$\beta$ ne couvre que $[0{,}15;\,0{,}38]$ (et $Fr'\in[0{,}23;\,0{,}58]$), et non la
+fourchette $[0{,}4;\,0{,}9]$ initialement anticipée --- qui supposait implicitement
+un $u_\infty$ bien plus faible. Ces cinq points explorent donc le régime de
+\textbf{petit $\beta$}, celui de la loi
+$\overline{u_\infty}/u_\infty - 1 \sim \beta^2$.
+
+\paragraph{Cette limitation n'est pas intrinsèque.} Il serait tentant de la justifier
+en remarquant qu'atteindre $\beta\simeq0{,}9$ exige $u'\simeq11$, soit $k\simeq180$,
+c'est-à-dire le champ $KE\simeq200$ qui \textbf{fragmentait} la bulle --- et d'en
+conclure à une tension intrinsèque entre grands $\beta$ et intégrité de la bulle.
+\textbf{L'argument ne tient pas}, et il est instructif de voir pourquoi. Ce run de
+fragmentation était à $g=1$, donc à $\sigma=(\rho_1-\rho_2)gD^2/Bo=255{,}7$. La
+campagne corrigée tourne à $g=4$, donc à $\sigma=1022{,}8$ : \textbf{quatre fois
+plus}. Or $We_t=\rho u'^2D/\sigma$ est \emph{inversement} proportionnel à $\sigma$ :
+à turbulence égale, le Weber turbulent est aujourd'hui quatre fois plus petit
+qu'alors. En prenant $We_c=3$ \cite{riviere2021}, le seuil de rupture n'est atteint
+que vers $u'\simeq13{,}9$, soit $\beta\simeq1{,}1$. La contrainte de résolution
+($k_{\max}\eta\ge1{,}5$) ne mord, elle, qu'au-delà. \textbf{C'est donc la
+fragmentation qui borne, et elle borne vers $\beta\simeq1$, non vers $0{,}4$} : la
+plage accessible peut être triplée sans changer ni $Bo$ ni $Ga$. C'est l'objet de la
+campagne décrite au \S\ref{subsec:campagne}.
+
+\subsection{Premiers résultats : la turbulence ralentit la remontée}
+\label{subsec:resultats_turb}
+
+La campagne corrigée (5 précurseurs, $g=4$, $Bo=1$, repère mobile) donne enfin des
+vitesses d'ascension exploitables. La vitesse terminale turbulente
+$\overline{u}_{\infty,\text{turb}}$ est le plateau de \texttt{frame\_uz} moyenné
+sur $t\ge220$ ; on la rapporte à la référence laminaire $u_\infty=12{,}27$
+(tab.~\ref{tab:resultats_turb}, fig.~\ref{fig:weber_rise}).
+
+\begin{table}[htbp]
+    \centering
+    \renewcommand{\arraystretch}{1.3}
+    \begin{tabular}{lccccc}
+        \toprule
+        Run & précurseur & $\beta=u'/u_\infty$ & $\overline{u}_{\infty,\text{turb}}$ &
+        $\overline{u}_{\infty,\text{turb}}/u_\infty$ & ralentissement \\
+        \midrule
+        (laminaire) & --- & $0$ & $12{,}27$ & $1{,}00$ & référence \\
+        wt05 & we03 & $0{,}15$ & $11{,}57$ & $0{,}94$ & $-6\%$ \\
+        wt11 & we07 & $0{,}22$ & $10{,}09$ & $0{,}82$ & $-18\%$ \\
+        wt21 & we13 & $0{,}31$ & $7{,}68$ & $0{,}63$ & $-37\%$ \\
+        wt25 & we16 & $0{,}33$ & $8{,}35$ & $0{,}68$ & $-32\%$ \\
+        wt32 & we20 & $0{,}38$ & $7{,}53$ & $0{,}61$ & $-39\%$ \\
+        \bottomrule
+    \end{tabular}
+    \caption{Vitesse d'ascension en fonction de l'intensité turbulente
+    (\textbf{moyenne d'ensemble} par point, injections à positions décalées dans le
+    même précurseur : $n=5$ réalisations pour $\beta=0{,}15$, $n=3$ pour les quatre
+    autres, dont les membres manquants sont en cours de calcul).
+    \textbf{La turbulence ralentit systématiquement la remontée}, d'abord vite, puis
+    beaucoup plus lentement au-delà de $\beta\simeq0{,}3$.}
+    \label{tab:resultats_turb}
+\end{table}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{courbe_maitresse.png}
+    \caption{\textbf{Ralentissement de la remontée par la turbulence} ($Bo=1$,
+    $Ga=70$, niveau 7 validé en maillage). Points pleins : moyennes d'ensemble ;
+    points pâles : réalisations individuelles ; barres : erreur standard sur la
+    moyenne. \textbf{À gauche}, en fonction de $\beta=u'/u_\infty$, avec la loi
+    petit-$\beta$ ajustée. \textbf{À droite}, en fonction du Froude turbulent
+    $Fr'=u'/\sqrt{gD}$, superposée aux deux branches de la littérature : nos points
+    quittent la parabole vers $Fr'\simeq0{,}45$ et s'infléchissent vers la loi
+    $0{,}37/Fr'$ --- ils échantillonnent la \emph{transition} entre les deux régimes.}
+    \label{fig:weber_rise}
+\end{figure}
+
+\paragraph{Trois enseignements.} \textbf{(1)} La turbulence \emph{ralentit}
+systématiquement la bulle, d'abord rapidement ($-6\%$ à $\beta=0{,}15$, $-18\%$ à
+$\beta=0{,}22$, $-37\%$ à $\beta=0{,}31$), puis \textbf{beaucoup plus lentement} :
+les trois points $\beta\ge0{,}3$ ($-37\%$, $-32\%$ et $-39\%$) sont
+\emph{indiscernables entre eux} compte tenu des barres d'erreur (SEM de $1{,}2$ à
+$4{,}5$ points). L'échantillon actuel ne permet pas de trancher entre un véritable
+plateau et une décroissance lente de type $1/Fr'$ ; il exclut en revanche la
+poursuite de la loi quadratique, qui prédirait $-53\%$ à $\beta=0{,}38$, soit trois
+écarts-types sous la mesure. La bulle n'est \textbf{jamais fragmentée} : le contrôle
+recalculé sur les $17$ réalisations avec le diagnostic corrigé donne un volume
+$\ge97{,}1\%$ du théorique et une \emph{seule} région gazeuse à tout instant, pour un
+rapport d'aspect $\chi\le1{,}67$.
+\textbf{(2)} La réduction dépasse nettement la loi petit-$\beta$ dès
+$\beta\simeq0{,}2$, ce qui place l'écoulement dans le régime de forte hindrance
+($\sim1/Fr'$) plutôt que quadratique --- l'ordre de grandeur rejoint les $-35\%$ de
+Poorte \& Biesheuvel.
+\textbf{(3) Nécessité de la moyenne d'ensemble} : à $\beta\gtrsim0{,}3$,
+$u'/\overline{u}_\infty\simeq0{,}5$ et une \emph{seule} réalisation ne fixe pas la
+moyenne. Une première mesure isolée donnait d'ailleurs une non-monotonie trompeuse
+($-24\%$ à $\beta=0{,}33$ contre $-37\%$ à $\beta=0{,}31$) ; en moyennant trois
+injections indépendantes, ce point remonte à $-32\%$ et l'anomalie disparaît.
+
+\subsection{Campagne en cours : étendre et fiabiliser la courbe}
+\label{subsec:campagne}
+
+Un premier balayage dense (neuf points, $\beta$ de $0{,}05$ à $0{,}45$) avait été
+soumis, puis \emph{annulé} avant d'avoir produit le moindre résultat exploitable. Il
+a été remplacé le 24 juillet par une campagne de \textbf{cinquante travaux} qui
+attaque les trois faiblesses de la figure~\ref{fig:weber_rise}.
+
+\begin{description}
+  \item[(A) $n=5$ partout.] Deux réalisations supplémentaires pour $\beta=0{,}22$ ;
+  $0{,}31$ ; $0{,}33$ ; $0{,}38$ (le point $\beta=0{,}15$ les a déjà). L'argument
+  n'est pas la taille des barres d'erreur --- passer de $3$ à $5$ ne divise la SEM
+  que par $1{,}3$ --- mais leur \emph{fiabilité} : à $n=3$, l'incertitude
+  \emph{sur l'écart-type lui-même} vaut $1/\sqrt{2(n-1)}\simeq50\%$. Annoncer
+  \og{}$\pm4{,}5\%$\fg{} quand la valeur réelle peut être $2\%$ ou $7\%$ n'a pas de
+  sens ; à $n=5$ cette incertitude retombe à ${\sim}35\%$. Le point $\beta=0{,}15$
+  illustre le risque : son cinquième membre est sorti à $10{,}24$ quand les quatre
+  autres se tenaient entre $11{,}6$ et $12{,}2$ --- une dispersion que $n=3$ aurait
+  masquée.
+  \item[(B) Trois points bas] ($\beta = 0{,}050$ ; $0{,}075$ ; $0{,}100$). La loi
+  $1-c\,\beta^2$ est aujourd'hui ajustée sur des points tous $\ge0{,}15$, ancrée par
+  le seul point laminaire : le comportement quadratique à l'origine est
+  \textbf{supposé, jamais vérifié}. Ces trois points le testent directement.
+  \item[(C) Quatre points hauts] ($\beta = 0{,}50$ ; $0{,}65$ ; $0{,}85$ ; $1{,}00$),
+  qui \textbf{triplent la plage} explorée. Comme montré plus haut, la fragmentation
+  ne borne qu'à $\beta\simeq1{,}1$ : $We_t$ n'atteint que $2{,}35$ au point le plus
+  intense, sous le seuil $We_c=3$. C'est dans cette plage que la branche $0{,}37/Fr'$
+  domine et que la confrontation à la littérature devient discriminante. Et si la
+  bulle fragmentait malgré tout, ce ne serait pas un échec mais une \textbf{mesure de
+  $We_c$} : l'expérience est concluante dans les deux cas.
+\end{description}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{campagne_beta.png}
+    \caption{\textbf{Conception de la campagne.} À gauche : couverture en $\beta$,
+    des cinq points acquis (pleins) aux douze visés (cercles ouverts, placés à leur
+    position \emph{attendue} sur la branche pertinente). À droite : $We_t$ point par
+    point --- c'est parce que la campagne tourne à $g=4$, donc à $\sigma=1023$, que
+    l'on peut monter jusqu'à $\beta=1$ sans franchir le seuil de fragmentation.}
+    \label{fig:campagne}
+\end{figure}
+
+\subsection{Confrontation à la littérature : le cadre de Froude}
+\label{subsec:froude}
+
+Notre paramètre de balayage $\beta = u'/u_\infty$ est équivalent au \textbf{Froude
+turbulent} $Fr' = u'/\sqrt{gD}$ employé dans la littérature récente, les deux étant
+reliés par le Froude d'ascension quiescent $u_\infty/\sqrt{gD}=1{,}53$
+(soit $Fr'=1{,}53\,\beta$). Or l'étude DNS de Liu \emph{et al.}~\cite{liu2024}
+--- qui traite \emph{exactement} notre problème (bulle montant en THI, même solveur
+Basilisk, même protocole précurseur, $\rho_2/\rho_1=1/850$) --- établit que la
+réduction de vitesse d'ascension est \textbf{principalement fonction de $Fr'$}, les
+nombres $Ga$ et $Bo$ n'ayant qu'un rôle secondaire sur la réduction \emph{relative}.
+Deux régimes se dégagent :
+\begin{equation}
+    \frac{\overline{u}_{\infty,\text{turb}}}{u_\infty} = 1 - \chi\,Fr'^2
+    \quad (Fr'\lesssim0{,}5), \qquad
+    \frac{\overline{u}_{\infty,\text{turb}}}{u_\infty} = \frac{0{,}37}{Fr'}
+    \quad (Fr'\gtrsim0{,}5),
+    \label{eq:froude}
+\end{equation}
+le régime de grand $Fr'$ suivant la loi $\propto 1/Fr'$ de Ruth et al. (2021).
+
+La figure~\ref{fig:froude} superpose nos cinq points (moyenne d'ensemble, lvl7) à
+ces deux lois. \textbf{Nos résultats tombent sur la courbe maître} : le point de plus
+faible intensité ($Fr'=0{,}23$) suit la parabole de Spelt \& Biesheuvel, et les points
+de forte intensité ($Fr'\gtrsim0{,}5$) rejoignent la loi $0{,}37/Fr'$ (p.~ex.
+$Fr'=0{,}58$ : mesuré $0{,}61\pm0{,}04$ contre $0{,}64$, soit ${\sim}4\%$ d'écart).
+L'accord, obtenu \emph{sans
+ajustement}, valide à la fois la chaîne de calcul corrigée et le fait que $Fr'$ est
+le bon paramètre de contrôle.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.72\textwidth]{weber_vs_Fr_litterature.png}
+    \caption{Vitesse d'ascension relative $\overline{u}_{\infty,\text{turb}}/u_\infty$
+    en fonction du Froude turbulent $Fr'=u'/\sqrt{gD}$. Points rouges : nos DNS
+    (moyenne d'ensemble, lvl7) ; carré noir : référence laminaire ($Fr'=0$). Tirets
+    bleus : loi petit-$Fr'$ $1-\chi Fr'^2$ \cite{spelt1997} ; trait vert :
+    loi grand-$Fr'$ $0{,}37/Fr'$ \cite{ruth2021,liu2024}. Nos points
+    tracent la transition entre les deux régimes.}
+    \label{fig:froude}
+\end{figure}
+
+\subsection{Identification du mécanisme : traînée non linéaire, mesurée}
+\label{subsec:mecanisme}
+
+Deux mécanismes peuvent expliquer le ralentissement, et ils ont des signatures
+\emph{opposées}. \textbf{(A) Échantillonnage préférentiel} : la bulle passerait plus de
+temps dans du fluide qui descend, et serait ainsi \emph{portée} vers le bas ; sa
+signature est une vitesse verticale du fluide vu par la bulle nettement \emph{négative},
+du même ordre que la réduction $\Delta U$. \textbf{(B) Traînée non linéaire}
+\cite{liu2024} : le fluide ambiant a une vitesse moyenne nulle, mais $C_D(Re)$ étant
+non linéaire, les fluctuations de la vitesse de glissement augmentent la traînée
+\emph{moyenne} ; sa signature est un fluide ambiant $\simeq0$ mais une forte
+\emph{variance} du glissement.
+
+\paragraph{Mesure.} On échantillonne la vitesse verticale du fluide dans un cône
+supérieur autour de la bulle (\texttt{src/mechanism.c}, snapshots des runs
+$\beta=0{,}15$, $0{,}31$, $0{,}38$), à plusieurs rayons, en retranchant l'écoulement que
+la bulle \emph{induit} elle-même --- calibré sur le run laminaire, où il n'existe aucune
+turbulence à échantillonner (il y vaut $+0{,}24$ à $r=3D$, décroissant, et positif comme
+attendu en amont d'une bulle montante). La différence proche$-$lointain est indépendante
+du repère mobile (le terme $\mathrm{frame\_uz}$ s'y annule). Le tableau ci-dessous oppose
+la réduction totale $\Delta U = u_\infty - \overline{W}$ à la part qu'expliquerait
+l'échantillonnage préférentiel.
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{lcccc}
+    \toprule
+    Run & $\beta$ & $\Delta U$ & signal préférentiel & part de $\Delta U$ \\
+    \midrule
+    wt05 & $0{,}15$ & $0{,}66$ & $-0{,}01$ & $1\%$ \\
+    wt21 & $0{,}31$ & $4{,}71$ & $-0{,}57$ & $12\%$ \\
+    wt32 & $0{,}38$ & $3{,}96$ & $-0{,}09$ & $2\%$ \\
+    \bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Verdict.} Une fois l'écoulement induit retranché, le fluide vu par la bulle
+est \textbf{quasi nul} : l'échantillonnage préférentiel explique au plus $12\%$ de la
+réduction, et ce point isolé est vraisemblablement du bruit (la tendance n'est pas
+monotone --- $\beta=0{,}38$, pourtant plus intense, ne donne que $2\%$). En regard, les
+\textbf{fluctuations de la vitesse de glissement} croissent de $8\%$ à $50\%$ de
+$\beta=0{,}15$ à $0{,}38$ (fig.~\ref{fig:mecanisme}) : c'est exactement l'amplitude que
+requiert la traînée non linéaire. \textbf{Le ralentissement est donc dominé par la
+traînée non linéaire}, en accord avec \cite{liu2024} pour une bulle super-Kolmogorov
+($St\gg1$), l'échantillonnage préférentiel --- réservé aux bulles sous-Kolmogorov
+($St\sim1$) --- restant marginal. On assume les limites de cette mesure : réalisations
+uniques, coquille située à l'intérieur de l'échelle intégrale (approximation), trois
+points ; mais le signe et l'ordre de grandeur sont robustes.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{mechanism.png}
+    \caption{\textbf{Mécanisme du ralentissement.} À gauche : vitesse du fluide vue par
+    la bulle selon le rayon ; le laminaire (gris) donne l'écoulement induit à
+    retrancher. Au centre : la réduction totale (rouge) contre la part expliquée par
+    l'échantillonnage préférentiel (violet) --- l'écart est la traînée non linéaire. À
+    droite : les fluctuations de glissement croissent avec $\beta$, condition de la
+    traînée non linéaire.}
+    \label{fig:mecanisme}
+\end{figure}
+
+\paragraph{Cohérence avec la trajectoire.} Ce diagnostic est cohérent avec ce que l'on
+observe :
+la bulle suit une trajectoire \textbf{oblique quasi-rectiligne} (déviation ${\sim}5$--$7^\circ$
+de la verticale, $Ga=70$ étant juste au-dessus du seuil $Ga_c\simeq44$), le long de
+laquelle la vitesse d'ascension présente une \textbf{modulation périodique faible} :
+sur le plateau, $w$ fluctue avec un écart-type de $0{,}21$, soit $1{,}7\%$ de
+$u_\infty$, à la période du lâcher tourbillonnaire ($T\simeq16{,}2$~u.t.,
+$St=0{,}080$). C'est une modulation du glissement bien moins spectaculaire que la
+spirale du cas $Ga=237$ de Liu et al., mais relevant du même couplage
+bulle--sillage.\footnote{Une version antérieure de ce document décrivait ici une
+bulle qui \og{}rampe\fg{}. Cette observation est \textbf{retirée} : elle provenait
+d'un artefact de rendu. Les films étaient produits par une coupe \emph{horizontale}
+($n=\{0,0,1\}$, caméra \texttt{front}), qui place l'axe d'ascension perpendiculaire à
+l'écran et rend la montée géométriquement invisible ; seule subsistait à l'image
+l'oscillation latérale. Corrigé dans \texttt{src/render\_lab.c} (coupe verticale
+$n=\{0,1,0\}$, caméra \texttt{bottom}). La bulle monte en réalité de façon
+parfaitement régulière, à $97{,}6\%$ de $u_\infty$ au minimum.}
+Le seuil de non-fragmentation est lui aussi cohérent : nos $We_t\le0{,}34$ sont bien
+sous le $We_c=3$ mesuré par Rivière et al. (2021), d'où l'absence de rupture.
+
+\paragraph{Réserve de résolution : levée.} Nos points couvrent
+$Fr'\in[0{,}23;0{,}58]$, comblant le bas de la gamme de Liu et al. Une différence de
+maillage doit être signalée : leurs DNS sont à ${\sim}68$ mailles par diamètre,
+contre ${\sim}17$ pour notre niveau 7. Ce comptage brut est toutefois trompeur, et
+l'étude de convergence du \S\ref{subsec:convergence} montre pourquoi : ce qui pilote
+la vitesse d'ascension n'est pas le nombre de mailles sur le diamètre, mais la
+résolution de la \textbf{couche limite} $\delta\sim D/\sqrt{Re_b}$. Le saut
+lvl6$\to$lvl7 ($+12{,}3\%$) correspond exactement au passage d'une couche limite non
+résolue ($\delta/\Delta x=0{,}87$) à une couche limite résolue ($1{,}64$) ; au-delà,
+doubler encore la résolution ne déplace $u_\infty$ que de $0{,}32\%$. Le niveau 7 est
+donc \textbf{convergé pour la grandeur mesurée}, et l'accord avec Liu et al.\ n'est
+pas une coïncidence de résolutions différentes.
+
+\paragraph{Leçon de méthode.} C'est le run \emph{laminaire} --- dont la seule
+raison d'être était de fournir une référence $u_\infty$ --- qui a révélé
+l'artefact. Sans lui, la campagne aurait conclu que \og{}la turbulence supprime la
+remontée de la bulle\fg{}, résultat spectaculaire, cohérent avec la littérature
+\cite{legendre2025} \emph{et entièrement faux}. Un cas limite dont la réponse est
+connue \emph{a priori} (ici : une bulle doit monter indéfiniment en fluide au
+repos) est le meilleur détecteur d'artefact numérique.

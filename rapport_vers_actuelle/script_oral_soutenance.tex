@@ -1,0 +1,244 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\frenchsetup{AutoSpacePunctuation=false}
+\usepackage{lmodern}
+\usepackage{geometry}
+\geometry{top=2cm,bottom=2cm,left=2cm,right=2cm}
+\usepackage{xcolor}
+\usepackage{tcolorbox}
+\tcbuselibrary{skins,breakable}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{amsmath,amssymb}
+
+%--- Theme & Couleurs --------------------------------------------------------
+\definecolor{imftblue}{RGB}{31,73,125}
+\definecolor{imftlight}{RGB}{79,129,189}
+\definecolor{bglight}{RGB}{245,247,250}
+\definecolor{darkgray}{RGB}{50,50,50}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=imftblue,
+    urlcolor=imftblue
+}
+
+\tcbset{
+    slidebox/.style={
+        enhanced,
+        colback=bglight,
+        colframe=imftblue,
+        fonttitle=\bfseries\Large,
+        coltitle=white,
+        attach title to upper,
+        after title={\par\vspace{0.3cm}},
+        boxrule=1pt,
+        arc=4pt,
+        breakable
+    },
+    keybox/.style={
+        enhanced,
+        colback=white,
+        colframe=imftlight,
+        fonttitle=\bfseries,
+        coltitle=white,
+        boxrule=0.8pt,
+        arc=3pt
+    }
+}
+
+%------------------------------------------------------------------------------
+\begin{titlepage}
+\title{%
+    \vspace{-1cm}
+    \Huge\bfseries\color{imftblue} Script Oral de Soutenance / Point Tuteurs\\[0.3cm]
+    \Large Guide parole slide-par-slide pour la présentation de stage
+}
+\author{\textbf{Carl Bonjean Fraser} \\ \small Étudiant Ingénieur ENSEEIHT (M1 / 2A MFEE)}
+\date{Tuteurs : Dominique \textsc{Legendre} \& Rémi \textsc{Zamansky} (IMFT) \\ \vspace{0.2cm} \small Juillet 2026}
+\end{titlepage}
+
+\begin{document}
+\maketitle
+
+\begin{tcolorbox}[colback=imftblue!10,colframe=imftblue,title= Mode d'emploi de ce guide]
+Ce document contient le **script oral mot-à-mot et les points d'appui** pour chaque diapositive de votre présentation Beamer (\texttt{presentation\_tuteurs.pdf}).  
+Utilisez-le pour votre répétition et conservez-le sous les yeux durant votre réunion avec vos tuteurs.
+\end{tcolorbox}
+
+\vspace{0.5cm}
+
+%==============================================================================
+% SLIDE 1
+%==============================================================================
+\begin{tcolorbox}[slidebox,title=Diapositive 1 : Titre et Introduction]
+\begin{tcolorbox}[keybox,title=Ce qu'il faut dire à l'oral :]
+« Bonjour à tous. Je vais vous présenter les résultats finaux de mon travail de stage portant sur la **simulation numérique directe (DNS) de l'ascension d'une bulle de gaz en turbulence homogène isotrope (HIT)** à l'aide du solveur Basilisk.
+
+L'objectif principal de ce travail a été d'apporter une réponse quantitative et étayée à une question classique en mécanique des fluides diphasique : **comment la turbulence ambiante modifie-t-elle la vitesse de remontée d'une bulle isolée ?** »
+\end{tcolorbox}
+
+\begin{itemize}
+    \item \textbf{Support visuel :} Diapositive de titre avec logos IMFT / ENSEEIHT.
+    \item \textbf{Message clé :} Présenter clairement le problème de mécanique des fluides et le cadre DNS.
+\end{itemize}
+\end{tcolorbox}
+
+%==============================================================================
+% SLIDE 2
+%==============================================================================
+\begin{tcolorbox}[slidebox,title=Diapositive 2 : Contexte Physique et Paramètres Adimensionnels]
+\begin{tcolorbox}[keybox,title=Ce qu'il faut dire à l'oral :]
+« Pour poser le cadre physique : nous étudions l'ascension d'une bulle unique de gaz ($\rho_l/\rho_g = 850$) dans un liquide soumis à une turbulence forcée homogène et isotrope en boîte triplement périodique.
+
+Conformément au théorème de Vaschy-Buckingham et au cadre fixé dans la revue de Legendre \& Zenit (2025), le système est caractérisé par deux nombres sans dimension fondamentaux :
+\begin{enumerate}
+    \item **Le nombre de Bond** $Bo = \frac{\rho_l g D^2}{\sigma} = 1$, qui fixe la déformabilité initiale.
+    \item **Le nombre de Galilée** $Ga = \frac{\sqrt{gD}D}{\nu} = 70$. Nous sommes donc juste au-dessus du seuil d'instabilité de sillage ($Ga_c \approx 44$), dans le régime de trajectoire oblique.
+\end{enumerate}
+
+Le paramètre de contrôle principal que nous balayons dans cette étude est **l'intensité turbulente relative $\beta = u'/u_\infty$**, où $u'$ est l'intensité des fluctuations RMS de vitesse du liquide et $u_\infty$ est la vitesse d'ascension en liquide quiescent. »
+\end{tcolorbox}
+
+\begin{itemize}
+    \item \textbf{Chiffres clés :} $Bo=1$, $Ga=70$, $\rho_l/\rho_g = 850$.
+    \item \textbf{Lien figure :} Figure montrant la décorrélation des trajectoires à $Ga=70$.
+\end{itemize}
+\end{tcolorbox}
+
+%==============================================================================
+% SLIDE 3
+%==============================================================================
+\begin{tcolorbox}[slidebox,title=Diapositive 3 : Méthode Numérique et Chaîne de Validation]
+\begin{tcolorbox}[keybox,title=Ce qu'il faut dire à l'oral :]
+« Avant d'analyser l'effet de la turbulence, nous avons mené une démarche rigoureuse de validation de la chaîne numérique sous Basilisk. Nous utilisons la méthode Volume-Of-Fluid (VOF) conservant la quantité de mouvement, associée à un maillage adaptatif octree (AMR) et un repère mobile (\texttt{event move\_frame}) pour maintenir la bulle au centre du domaine.
+
+**Les 5 garde-fous numériques ont tous été quantifiés et validés (PASS) :**
+\begin{itemize}
+    \item **Référence laminaire $u_\infty$** : mesurée à $12{,}27$ avec une convergence en maillage extrême entre les niveaux 7 et 8 (seulement $0{,}32\%$ d'écart).
+    \item **Courants parasites** : $u_{\max} = 0{,}0093$, soit moins de $0{,}08\%$ de $u_\infty$.
+    \item **Biais de sillage périodique** : évalué et borné à $-0{,}8\%$.
+    \item **Conservation du volume** : supérieure à $99\%$ tout au long des simulations.
+    \item **Résolution de la turbulence** : le critère $k_{\max}\eta \ge 3{,}92$ garantit que toutes les échelles de Kolmogorov sont largement résolues.
+\end{itemize} »
+\end{tcolorbox}
+
+\begin{itemize}
+    \item \textbf{Point d'appui :} Montrer la robustesse de la chaîne numérique avant de présenter les résultats turbulents.
+\end{itemize}
+\end{tcolorbox}
+
+%==============================================================================
+% SLIDE 4
+%==============================================================================
+\begin{tcolorbox}[slidebox,title=Diapositive 4 : Résultat Central — Évolution de la Vitesse Relative]
+\begin{tcolorbox}[keybox,title=Ce qu'il faut dire à l'oral :]
+« Arrivons au résultat central du travail : nous présentons ici l'évolution de la vitesse d'ascension relative $\bar{u}_{\infty,\text{turb}}/u_\infty$ en fonction de $\beta$. Chaque point représenté est une **moyenne d'ensemble sur $n=5$ réalisations turbulentes indépendantes** (obtenues en décalant la position d'injection dans le champ précurseur).
+
+**Le constat est net : la turbulence ralentit systématiquement la remontée de la bulle.**  
+Ce ralentissement est monotone : il débute à $-3\%$ pour une faible turbulence ($\beta = 0{,}05$) et atteint jusqu'à **$-72\%$ de réduction** pour $\beta = 0{,}65$.  
+L'ensemble des points s'aligne de manière remarquable sur la courbe de référence de la littérature (Liu \& Deike 2024), sans aucun paramètre d'ajustement. »
+\end{tcolorbox}
+
+\begin{itemize}
+    \item \textbf{Graphique :} Figure \texttt{ralentissement\_beta\_froude.png}.
+    \item \textbf{Plage de ralentissement :} $-3\%$ à $-72\%$.
+\end{itemize}
+\end{tcolorbox}
+
+%==============================================================================
+% SLIDE 5
+%==============================================================================
+\begin{tcolorbox}[slidebox,title=Diapositive 5 : Confrontation aux Deux Régimes de la Littérature]
+\begin{tcolorbox}[keybox,title=Ce qu'il faut dire à l'oral :]
+« Quand on analyse plus finement cette courbe en fonction du nombre de Froude turbulent $Fr' = u'/\sqrt{gD} = 1{,}53\,\beta$, deux régimes asymptotiques apparaissent clairement :
+
+1. **À faible Froude ($Fr' \lesssim 0{,}4$)** : Nos données confirment le comportement quadratique prédit par Spelt \& Biesheuvel (1997) : $\frac{\bar{u}_{\infty,\text{turb}}}{u_\infty} = 1 - c\,\beta^2$ avec une constante ajustée à $c \approx 2{,}41$. Les points $\beta \in [0{,}05 \,;\, 0{,}15]$ valident cet ancrage à l'origine.
+
+2. **À fort Froude ($Fr' \ge 0{,}5$)** : Nos données rejoignent exactement la branche asymptotique en $0{,}37/Fr'$ établie par Liu \& Deike (2024).  
+   - À $\beta=0{,}50$ ($Fr'=0{,}77$) : DNS $= 0{,}416$ vs $0{,}37/Fr' = 0{,}482$.  
+   - À $\beta=0{,}65$ ($Fr'=1{,}00$) : DNS $= 0{,}283$ vs $0{,}37/Fr' = 0{,}371$. »
+\end{tcolorbox}
+\end{tcolorbox}
+
+%==============================================================================
+% SLIDE 6
+%==============================================================================
+\begin{tcolorbox}[slidebox,title=Diapositive 6 : Identification du Mécanisme Physique]
+\begin{tcolorbox}[keybox,title=Ce qu'il faut dire à l'oral :]
+« Quel est le mécanisme physique responsable de ce ralentissement ? Deux candidats s'affrontaient dans la littérature :
+\begin{itemize}
+    \item **L'échantillonnage préférentiel** (la bulle chercherait des zones de liquide descendant).
+    \item **La traînée non linéaire** (les fluctuations de vitesse augmentent la traînée moyenne car $C_D(Re)$ n'est pas linéaire).
+\end{itemize}
+
+En mesurant directement la vitesse du liquide dans une coquille entourant la bulle, nous montrons que la vitesse moyenne vue par la bulle est **quasi nulle** (l'échantillonnage préférentiel n'explique au plus que $12\%$ de la réduction). En revanche, **les fluctuations de la vitesse de glissement croissent de $8\%$ à $50\%$** avec $\beta$.
+
+**Verdict :** Le ralentissement est **dominé par la traînée non linéaire**, ce qui est parfaitement cohérent avec une bulle super-Kolmogorov ($St \gg 1$). »
+\end{tcolorbox}
+
+\begin{itemize}
+    \item \textbf{Figure :} \texttt{mechanism.png}.
+\end{itemize}
+\end{tcolorbox}
+
+%==============================================================================
+% SLIDE 7
+%==============================================================================
+\begin{tcolorbox}[slidebox,title=Diapositive 7 : Couverture de la Campagne et Intégrité de la Bulle]
+\begin{tcolorbox}[keybox,title=Ce qu'il faut dire à l'oral :]
+« Concernant l'intégrité de la bulle durant le balayage : une question légitime était de savoir si la bulle risquait de se fragmenter aux fortes intensités.
+
+En travaillant à $g=4$, la tension de surface vaut $\sigma = 1023$ (4 fois plus élevée qu'à $g=1$). Le nombre de Weber turbulent $We_t = \frac{\rho u'^2 D}{\sigma}$ sature ainsi à **$We_{t,\max} = 1{,}00$**, ce qui reste largement inférieur au seuil de rupture critique $We_c = 3{,}0$ mesuré par Rivière et al. (2021).
+
+**Sur l'ensemble des 10 points acquis, la bulle est restée 100\% intègre et non fragmentée.** »
+\end{tcolorbox}
+\end{tcolorbox}
+
+%==============================================================================
+% SLIDE 8
+%==============================================================================
+\begin{tcolorbox}[slidebox,title=Diapositive 8 : Bilan Synthétique de la Campagne]
+\begin{tcolorbox}[keybox,title=Ce qu'il faut dire à l'oral :]
+« Voici le tableau récapitulatif des 10 points acquis ($n=5$ réalisations par point) :
+- À très faible $\beta$ ($0{,}05$ à $0{,}10$), la vitesse reste très proche de $u_\infty$ (réduction $< 4\%$).
+- Entre $\beta = 0{,}15$ et $0{,}38$, le ralentissement passe de $-6\%$ à $-38\%$.
+- Aux fortes intensités ($\beta = 0{,}50$ et $0{,}65$), le ralentissement s'accentue fortement jusqu'à $-58\%$ et $-72\%$.
+
+Ce jeu de données apporte une cartographie complète et statistique du problème. »
+\end{tcolorbox}
+
+\begin{center}
+\small
+\begin{tabular}{lcccccccccc}
+    \toprule
+    $\beta$ & $0{,}05$ & $0{,}075$ & $0{,}10$ & $0{,}15$ & $0{,}22$ & $0{,}31$ & $0{,}33$ & $0{,}38$ & $0{,}50$ & $0{,}65$ \\
+    \midrule
+    Ralentissement & $-3\%$ & $0\%$ & $-4\%$ & $-6\%$ & $-12\%$ & $-31\%$ & $-32\%$ & $-38\%$ & $-58\%$ & $-72\%$ \\
+    \bottomrule
+\end{tabular}
+\end{center}
+\end{tcolorbox}
+
+%==============================================================================
+% SLIDE 9
+%==============================================================================
+\begin{tcolorbox}[slidebox,title=Diapositive 9 : Conclusion et Perspectives]
+\begin{tcolorbox}[keybox,title=Ce qu'il faut dire à l'oral :]
+« Pour conclure :
+\begin{enumerate}
+    \item Nous avons quantifié avec précision le ralentissement de la bulle par la turbulence, validé quantitativement la chaîne numérique sous Basilisk, et confirmé le rôle prépondérant de la traînée non linéaire.
+    \item Les résultats valident la transition entre la parabole à faible $\beta$ et le régime $0{,}37/Fr'$ de la littérature.
+\end{enumerate}
+
+**En termes de perspectives :** Les 2 ultimes points de la campagne ($\beta=0{,}85$ et $\beta=1{,}00$) sont actuellement en file d'attente sur le cluster Kairos pour clore définitivement le balayage jusqu'à $We_t \approx 2{,}35$. Les étapes futures consisteront à faire varier le nombre de Bond $Bo$ pour tester l'effet propre de la déformabilité de l'interface.
+
+Je vous remercie pour votre attention et suis ouvert à toutes vos questions. »
+\end{tcolorbox}
+\end{tcolorbox}
+
+\end{document}

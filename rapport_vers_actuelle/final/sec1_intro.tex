@@ -1,0 +1,129 @@
+\section{Introduction}
+
+La remontée d'une bulle de gaz dans un liquide au repos est l'un des problèmes les
+plus anciens de la mécanique des fluides diphasiques. Nous etudions le cas d'une bulle 
+remontant dans un écoulement porteur \emph{turbulent}. Les écoulements à bulles
+turbulents interviennent dans un grand nombre de configurations naturelles et
+industrielles : colonnes à bulles et réacteurs chimiques (aération, fermentation,
+procédés d'oxydation), génie des procédés pétroliers, mais aussi processus
+environnementaux à grande échelle comme les échanges gazeux à l'interface
+océan-atmosphère sous l'effet du déferlement des vagues. Dans toutes ces
+situations, la turbulence ambiante modifie la vitesse à laquelle le gaz remonte, 
+et donc les temps de séjour, les taux de transfert de masse et, in fine, le rendement
+des procédés concernés.
+
+La question posée dans ce travail est simple à énoncer et difficile à trancher :
+\emph{la turbulence ambiante accélère-t-elle ou ralentit-elle la vitesse
+d'ascension d'une bulle, par rapport à sa vitesse terminale en liquide au repos ?}
+Deux intuitions contradictoires coexistent dans la littérature. D'une part, la
+turbulence pourrait favoriser la remontée en réduisant transitoirement la traînée
+(par analogie avec la réduction de traînée observée sur des sphères solides en
+écoulement turbulent) ou en permettant à la bulle d'exploiter des structures
+tourbillonnaires porteuses. D'autre part, elle pourrait au contraire freiner la
+bulle : en la faisant dévier de sa trajectoire rectiligne, en la faisant
+échantillonner préférentiellement des zones de fluide descendant, ou en augmentant
+sa traînée moyenne du fait de la non-linéarité de la loi de traînée vis-à-vis des
+fluctuations de vitesse relative. Trancher entre ces scénarios est rendu difficile
+par le couplage intrinsèque entre la bulle et la turbulence qui l'entoure : la
+bulle déforme et perturbe localement l'écoulement porteur, son sillage instationnaire
+interagit avec les structures turbulentes incidentes, et sa trajectoire peut devenir
+oblique ou instable même en l'absence de toute turbulence dès lors que le nombre de
+Galilée dépasse un seuil critique. Isoler l'effet net de la turbulence sur la
+vitesse de remontée exige donc une simulation où les autres
+paramètres du problème (rapports de densité et de viscosité, tension superficielle,
+taille de bulle) sont maîtrisés et maintenus fixes pendant que l'intensité
+turbulente varie seule.
+
+\subsection{État de l'art}
+
+Le ralentissement de la remontée d'une bulle par la turbulence ambiante est un
+problème débattu de longue date. Sur le plan expérimental, Poorte \& Biesheuvel
+\cite{poorte2002} ont mesuré, dans une turbulence de grille quasi homogène et
+isotrope, une réduction de la vitesse moyenne d'ascension pouvant atteindre
+environ $-35\,\%$ par rapport à la valeur en liquide au repos, établissant
+empiriquement que l'effet net de la turbulence est bien un ralentissement et non
+une accélération. Sur le plan théorique, Spelt \& Biesheuvel \cite{spelt1997} ont
+proposé, dans la limite d'une turbulence de faible intensité, une loi de
+correction quadratique de la forme $1 - c\,\beta^2$, où $\beta = u'/u_\infty$ est
+le rapport entre la fluctuation de vitesse turbulente $u'$ et la vitesse
+terminale en milieu quiescent $u_\infty$ : la réduction relative de vitesse croît
+comme le carré de l'intensité turbulente relative au voisinage de $\beta = 0$.
+À l'opposé, dans le régime de turbulence forte, Ruth \emph{et al.}
+\cite{ruth2021} ont montré que la réduction de vitesse suit asymptotiquement une
+loi en $0.37/\mathrm{Fr}'$, où $\mathrm{Fr}' = u'/\sqrt{gD}$ est un nombre de
+Froude turbulent construit sur la fluctuation de vitesse et le diamètre de bulle
+$D$ : au-delà d'un certain régime, c'est la dynamique de grand nombre de Froude
+turbulent, et non plus l'intensité turbulente relative $\beta$, qui contrôle
+directement la réduction de vitesse.
+
+Ces deux comportements ont été réunis en une courbe  par Liu, Farsoiya, Perrard \& Deike \cite{liu2024}, au moyen de simulations
+numériques directes réalisées avec le même solveur (Basilisk) et sur le même type
+de configuration (une bulle unique en turbulence homogène isotrope triplement
+périodique) que celle utilisée dans le présent travail. Cette étude sera la
+référence  du présent stage : elle relie le régime petite
+perturbation ($1-c\beta^2$) au régime grand nombre de Froude turbulent
+($0.37/\mathrm{Fr}'$), et surtout elle attribue explicitement le mécanisme du
+ralentissement à la \emph{traînée non linéaire} : la loi de traînée $C_D(Re)$
+n'étant pas linéaire en la vitesse relative, des fluctuations symétriques de
+cette vitesse relative induites par la turbulence produisent, en moyenne, une
+traînée plus grande que celle évaluée à la vitesse moyenne, d'où un
+ralentissement systématique. Ce mécanisme est explicitement distingué de
+l'\emph{échantillonnage préférentiel} (biais statistique par lequel une
+bulle plus légère que le fluide environnant a tendance à être capturée par les
+zones de vorticité et de fluide descendant). Ce mécanisme, selon Liu \emph{et
+al.}, domine plutôt pour des bulles de taille inférieure ou de l'ordre de
+l'échelle de Kolmogorov (nombre de Stokes $\mathrm{St} \sim 1$), alors que la
+traînée non linéaire domine pour des bulles de taille supérieure à cette échelle
+($\mathrm{St} \gg 1$), configuration qui est celle du présent travail.
+
+Le paramètre de contrôle central de ce problème a été mis en évidence par la
+revue récente de Legendre \& Zenit \cite{legendre2025} (\emph{Reviews of Modern
+Physics}) : c'est le rapport $\beta = u'/u_\infty$ entre la fluctuation de
+vitesse turbulente et la vitesse terminale en milieu au repos qui organise
+l'ensemble des résultats de la littérature. D'autres travaux de simulation numérique
+directe éclairent des aspects connexes du problème : Loisy \& Naso
+\cite{loisy2017} ont étudié le cas d'une grosse bulle flottante en turbulence
+homogène isotrope, dans un régime de tailles comparable à celui considéré ici ;
+Cano-Lozano \& Magnaudet \cite{canolozano2016} ont caractérisé l'instabilité de
+trajectoire d'une bulle isolée en liquide au repos, montrant qu'elle devient
+oblique ou instationnaire au-delà d'un nombre de Galilée critique
+$\mathrm{Ga}_c \approx 44$ ; enfin Rivière \emph{et al.} \cite{riviere2021} ont
+caractérisé la fragmentation d'une bulle en turbulence, avec un seuil critique en
+nombre de Weber turbulent $\mathrm{We}_c \approx 3$, qui borne le domaine des
+intensités turbulentes explorables sans rupture de la bulle.
+
+De cette littérature se dégagent trois éléments structurants pour la présente
+étude. Premièrement, le paramètre de contrôle pertinent est $\beta = u'/u_\infty$. Deuxièmement, la réduction relative de vitesse
+$u_{\infty,\mathrm{turb}}/u_\infty$ suit deux régimes asymptotiques distincts : une
+loi quadratique $1-c\beta^2$ à petit $\beta$, puis une loi en $1/\mathrm{Fr}'$ à
+grand nombre de Froude turbulent, les deux étant reliées par la courbe de référence
+de Liu \emph{et al.} \cite{liu2024}. Troisièmement, le mécanisme physique
+responsable du ralentissement fait débat entre échantillonnage préférentiel et
+traînée non linéaire, les deux mécanismes n'étant pas mutuellement exclusifs mais
+opérant préférentiellement dans des régimes de taille de bulle différents
+(sous-Kolmogorov contre super-Kolmogorov).
+
+%%% Ajouter ici une figure de la courbe maitresse de liu et al
+
+\subsection{Objectifs et plan du rapport}
+
+L'objectif de ce travail est de quantifier, par simulation numérique, la
+réduction relative de la vitesse d'ascension $u_{\infty,\mathrm{turb}}/u_\infty$
+d'une bulle unique en fonction de l'intensité turbulente relative $\beta$, à
+nombre de Bond $\mathrm{Bo}=1$ et nombre de Galilée $\mathrm{Ga}=70$ fixés (donc
+au-delà du seuil d'instabilité de trajectoire $\mathrm{Ga}_c\approx44$ identifié
+par Cano-Lozano \& Magnaudet \cite{canolozano2016}), et d'identifier lequel des
+deux mécanismes candidats 1. échantillonnage préférentiel ou 2. traînée non linéaire domine dans le régime de taille de bulle considéré, en faisant la confrontation aux résultats de Liu, Farsoiya, Perrard \& Deike
+\cite{liu2024}.
+
+La suite du rapport est organisée comme suit. La section~2 pose le cadre physique
+et adimensionnel du problème (Vaschy-Buckingham, définition de
+$\beta$ et de $\mathrm{Fr}'$). La section~3 décrit les méthodes numériques :
+solveur Basilisk, méthode VOF conservant la quantité de mouvement, raffinement de
+maillage adaptatif par octree, protocole en deux étapes précurseur turbulent puis
+injection de la bulle. La section~4 présente la validation du modèle numérique
+(convergence en maillage, courants parasites, biais liés à la périodicité du
+domaine). La section~5 présente les résultats : effet mesuré de la turbulence sur
+la vitesse d'ascension en fonction de $\beta$. La section~6 discute le mécanisme
+physique du ralentissement observé. La section~7 conclut et dégage les
+perspectives de ce travail.

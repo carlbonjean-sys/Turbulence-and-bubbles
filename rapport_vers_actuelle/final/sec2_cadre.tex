@@ -1,0 +1,173 @@
+\section{Cadre physique et adimensionnel}
+\label{sec:cadre}
+
+Cette section pose les grandeurs physiques du problème ainsi que les nombres sans dimension qui le décrivent. Elle
+établit, par une analyse de Buckingham, que ce problème comporte
+trois nombres sans dimension indépendants, ce qui fixe la
+structure de toute la campagne de simulations présentée dans les sections
+suivantes.
+
+\subsection{Grandeurs physiques}
+\label{sec:cadre:grandeurs}
+
+Le système est diphasique : un liquide (indice $l$) porte une bulle de gaz
+(indice $g$), la bulle étant la phase légère repérée par la fraction
+volumique $f<0{,}5$ (convention $f=1$ dans le liquide, $f=0$ dans le gaz,
+détaillée en section Méthodes). Chaque phase est caractérisée par sa masse
+volumique $\rho$ et sa viscosité dynamique $\mu$ (ou cinématique
+$\nu=\mu/\rho$), l'interface qui les sépare par une tension superficielle
+$\sigma$, et le champ de pesanteur uniforme $g$ ferme le système.
+
+Le moteur de l'ascension est la \textbf{poussée d'Archimède}, proportionnelle
+à l'écart de densité $\Delta\rho = \rho_l - \rho_g$ et à $g$. Pour que cette
+poussée soit correctement représentée dans un domaine \emph{périodique}, cette force issue la gravité est formulée comme une force volumique périodique, de moyenne nulle sur le
+domaine :
+\begin{equation}
+    \rho\,\mathbf{a} = (\rho - \rho_m)\,\mathbf{g},
+    \qquad \rho_m = \langle \rho \rangle_{\text{domaine}},
+    \label{eq:archimede}
+\end{equation}
+où $\rho_m$ est la densité moyenne du domaine.
+
+Les rapports de propriétés entre phases sont fixés une fois pour toutes sur
+l'ensemble de l'étude, dans le régime d'une bulle de gaz légère et peu visqueuse en
+milieu liquide :
+\begin{equation}
+    \frac{\rho_l}{\rho_g} = 850, \qquad \frac{\mu_l}{\mu_g} = 100.
+    \label{eq:rapports}
+\end{equation}
+Le rapport de densité est celui d'un couple air/eau, également retenu par les simulations de
+référence~\cite{riviere2021,liu2024}~; le rapport de viscosité est ici plus élevé que
+la valeur $\mu_l/\mu_g=25$ de ces études, sans incidence sur la dynamique aux nombres
+de Reynolds de bulle considérés, la phase gazeuse restant dynamiquement passive.
+Le diamètre de bulle
+$D$ (diamètre équivalent d'une sphère de même volume) est la longueur de
+référence du problème ; la géométrie du domaine (taille $L_0$, triplement
+périodique) est elle aussi fixée.
+
+\subsection{Nombres sans dimension}
+\label{sec:cadre:nombres}
+
+Cinq groupements sans dimension organisent la discussion physique du
+problème : trois nombres microscopiques classiques de la dynamique d'une
+bulle isolée (Bond, Galilée, Reynolds de bulle) et deux nombres qui
+caractérisent l'agitation turbulente extérieure vue par la bulle (Weber
+turbulent, Reynolds turbulent), le tout relié par un paramètre central,
+$\beta$, propre au cadre de couplage bulle-turbulence.
+
+\paragraph{Nombre de Bond.} Il compare la flottabilité, motrice de la
+déformation, à la tension superficielle, qui s'y oppose :
+\begin{equation}
+    Bo = \frac{\Delta\rho\, g\, D^2}{\sigma}.
+    \label{eq:bond}
+\end{equation}
+Il est imposé à $Bo=1$ sur l'ensemble de l'étude (bulle modérément
+déformable).
+
+\paragraph{Nombre de Galilée.} Il compare les forces de flottabilité aux
+forces visqueuses et gouverne, à $Bo$ fixé, le régime de sillage et de
+trajectoire d'une bulle isolée en fluide au repos :
+\begin{equation}
+    Ga = \frac{\sqrt{g D^3}}{\nu}.
+    \label{eq:galilee}
+\end{equation}
+Il vaut $Ga=70$ dans toute la campagne. Sur le diagramme des régimes
+$(Ga,Bo)$ établi par \cite{canolozano2016}, ce couple se situe au-delà du
+seuil de stabilité de la trajectoire rectiligne, $Ga_c\simeq44$ à $Bo=1$ : on s'attend alors a
+une trajectoire \textbf{oblique}.
+
+\paragraph{Nombre de Reynolds de bulle.} Une fois la vitesse terminale
+$u_\infty$ mesurée, il quantifie a posteriori le régime inertiel de
+l'écoulement autour de la bulle :
+\begin{equation}
+    Re_b = \frac{u_\infty D}{\nu}.
+    \label{eq:reb}
+\end{equation}
+La référence laminaire de cette étude (bulle isolée en liquide au repos)
+donne $Re_b \approx 108$.
+
+\paragraph{Nombre de Weber turbulent.} Il compare l'agitation turbulente
+ambiante à
+la tension superficielle, et gouverne la possibilité de rupture de la
+bulle :
+\begin{equation}
+    We_t = \frac{\rho_l\, u'^2\, D}{\sigma},
+    \label{eq:wet}
+\end{equation}
+où $u'$ est la vitesse fluctuante du liquide loin de la bulle. Sa
+définition et le seuil de rupture associé $We_{tC}=\mathcal{O}(1)$ suivent la
+revue de \cite{legendre2025} ; l'ordre de grandeur $We_c\approx3$ est
+également rapporté par \cite{riviere2021}.
+
+\paragraph{Nombre de Reynolds turbulent.} Il caractérise, indépendamment de
+l'intensité $u'$, l'étendue de la cascade inertielle de la turbulence
+porteuse, via l'échelle de Taylor $\lambda$ :
+\begin{equation}
+    Re_\lambda = \frac{u'\,\lambda}{\nu}.
+    \label{eq:relambda}
+\end{equation}
+
+\paragraph{Froude turbulent et paramètre $\beta$.} Deux
+grandeurs de référence sont possibles : la vitesse d'échelle de flottabilité
+$\sqrt{gD}$, donnant le \textbf{Froude turbulent}
+\begin{equation}
+    Fr' = \frac{u'}{\sqrt{gD}},
+    \label{eq:frprime}
+\end{equation}
+et la vitesse terminale \emph{mesurée} en liquide au repos $u_\infty$,
+donnant le paramètre
+\begin{equation}
+    \beta = \frac{u'}{u_\infty},
+    \label{eq:beta}
+\end{equation}
+identifié par \cite{legendre2025} comme un paramètre de contrôle du
+couplage bulle-turbulence dans la littérature du domaine. Les deux sont
+reliés, une fois $u_\infty$ connu, par le rapport (constant pour cette étude)
+$\sqrt{gD}/u_\infty$, soit numériquement
+\begin{equation}
+    Fr' = 1{,}53\,\beta.
+    \label{eq:fr_beta}
+\end{equation}
+Les deux paramètres ($\beta$ et $Fr'$) seront utilisés en parallèle dans la suite du rapport.
+
+\subsection{Analyse dimensionnelle : trois groupes indépendants}
+\label{sec:cadre:buckingham}
+
+Une fois les rapports de densité et de viscosité \eqref{eq:rapports} et la
+géométrie fixés, le problème --- une bulle de diamètre $D$ dans un liquide de
+masse volumique $\rho_l$ et de viscosité cinématique $\nu$, soumise à la
+pesanteur $g$, à une tension superficielle $\sigma$, et à une turbulence
+extérieure de dissipation $\varepsilon$ --- fait intervenir six grandeurs
+dimensionnelles : $g,\ \sigma,\ \nu,\ \varepsilon,\ \rho_l,\ D$. Ces six
+grandeurs s'expriment avec trois dimensions fondamentales indépendantes
+($M$, $L$, $T$). Le théorème de Vaschy--Buckingham donne donc
+\begin{equation}
+    6 \text{ grandeurs} - 3 \text{ dimensions} = 3 \text{ groupes sans dimension indépendants}.
+    \label{eq:buckingham}
+\end{equation}
+On les choisit comme $Bo$, $We_t$ et $Re_\lambda$. Le quatrième
+nombre usuel de la dynamique des bulles, le Galilée $Ga$ (ou, de façon
+équivalente, le nombre de Morton $Mo = Bo^3/Ga^4$), ne sont pas libres et dérivent du choix des autres paramètres.
+
+\subsection{Concepts numériques}
+\label{sec:cadre:numerique}
+
+La résolution du problème diphasique repose sur trois choix numériques dont
+le détail (schémas, critères, implémentation) est développé en section
+Méthodes ; ils sont seulement introduits ici pour situer le vocabulaire
+utilisé dans la suite.
+
+\begin{itemize}
+\item \textbf{Volume-Of-Fluid (VOF).} On repère l'interface liquide/gaz avec la fraction volumique $f$ ($f=1$ dans le liquide, $f=0$ dans le gaz). Son advection préserve la masse de chaque phase. On utilise une formulation qui conserve aussi la quantité de mouvement, ce qui est crucial vu le fort écart de densité ($\rho_l/\rho_g=850$) de l'étude.
+    \item \textbf{Maillage adaptatif octree.} Le domaine, discrétisé en
+    arbre octree, est raffiné localement où l'erreur d'ondelette dépasse un
+    seuil, sur les champs $\{f, |\boldsymbol{\omega}|\}$ (interface et
+    vorticité) : l'interface de la bulle et son sillage turbulent sont
+    résolus finement, le reste du domaine reste grossier.
+    \item \textbf{Unités code.} L'ensemble des simulations est mené en
+    unités adimensionnées par la masse volumique du liquide ($\rho_l=1$),
+    l'intensité de la pesanteur ($g$ pris comme échelle d'accélération) et
+    le rayon initial de la bulle $R_0$ comme longueur de référence. Les
+    nombres sans dimension de \S\ref{sec:cadre:nombres} sont donc directement
+    lisibles sur les grandeurs codées, sans conversion.
+\end{itemize}

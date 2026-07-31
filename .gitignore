@@ -1,0 +1,30 @@
+# Binary executables
+bubble
+bubble_serial
+*.o
+*.a
+*.so
+*.exe
+
+# TeX temporary compilation files
+*.aux
+*.log
+*.out
+*.toc
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.synctex.gz
+
+# Python cache & virtualenv
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS / IDE metadata
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

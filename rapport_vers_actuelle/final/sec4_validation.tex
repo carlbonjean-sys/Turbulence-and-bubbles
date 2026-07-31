@@ -1,0 +1,206 @@
+% genere par split_sec9.py -- contenu issu de sec9.tex (audite), reorganise pour le rapport final.
+\section{Validation du modèle numérique}
+
+Cette section valide la chaîne de calcul : résolution des échelles, formulation de la poussée d’Archimède conservation du volume et convergence en maillage (régimes laminaire et turbulent).
+
+\subsection{Résolution des échelles turbulentes}
+
+Le tableau~\ref{tab:designA_resol} rassemble les échelles mesurées sur les précurseurs monophasiques. Nous vérifions le critère de résolution $k_{max}\,\eta > 1{,}5$ partout ($k_{max}=\pi\,2^7/L_0 = 3{,}35$), avec des valeurs comprises entre $7{,}7$ (we03) et $3{,}9$ (we20). Les valeurs de $We_t$ restent proches des cibles. Par ailleurs, $Re_\lambda$ ne varie que de $18$ à $29$ quand $We_t$ augmente d'un facteur $6$, ce qui confirme le verrouillage $We_t$--$Re_\lambda$ du Design A.
+
+Nos précurseurs s'alignent avec les DNS de la littérature. Par exemple, la revue de \cite{legendre2025} cite pour l'étude de Loisy \& Naso~\cite{loisy2017} des ratios $\eta/D\simeq0{,}098$, $\lambda/D\simeq1{,}0$ et $L_i/D\simeq2{,}1$. Nous obtenons respectivement ${\simeq}0{,}09$--$0{,}11$, ${\simeq}0{,}9$--$1{,}1$ et ${\simeq}1{,}5$--$1{,}8$. La bulle se situe donc bien dans le régime des grandes bulles ($\eta < D < L_i$), identifié comme une question ouverte.
+
+\begin{table}[htbp]
+    \centering
+    \renewcommand{\arraystretch}{1.3}
+    \begin{tabular}{lcccccccccc}
+        \toprule
+        Run & $We_t$ & $k$ & $\varepsilon$ & $Re_\lambda$ & $\eta$ & $\lambda$ & $L$ & $\tau$ & $k_{max}\eta$ & $D/\eta$ \\
+        \midrule
+        we03 & 0.3 & 5 & 0.22 & 19 & 2.29 & 19.6 & 25 & 21 & 7.7 & 7.0 \\
+        we07 & 0.7 & 11 & 0.59 & 25 & 1.79 & 17.5 & 29 & 17 & 6.0 & 8.9 \\
+        we13 & 1.4 & 21 & 1.72 & 27 & 1.37 & 13.9 & 25 & 11 & 4.6 & 11.7 \\
+        we16 & 1.5 & 25 & 2.03 & 29 & 1.31 & 13.9 & 27 & 11 & 4.4 & 12.2 \\
+        we20 & 2.1 & 32 & 3.29 & 29 & 1.17 & 12.3 & 23 & 8 & 3.9 & 13.7 \\
+        \bottomrule
+    \end{tabular}
+    \caption{Échelles turbulentes mesurées sur les 5 précurseurs monophasiques ($\eta$ Kolmogorov, $\lambda$ Taylor, $L$ intégrale, $\tau=k/\varepsilon$ ; unités code). La résolution vérifie $k_{max}\eta>1{,}5$ pour tous les cas.}
+    \label{tab:designA_resol}
+\end{table}
+
+\subsection{Formulation de la poussée d’Archimède}
+
+On représente la pousse d’Archimède en domaine triplement periodique par une \textbf{force volumique
+périodique}, obtenue en retranchant la densité moyenne $\rho_m$ du domaine :
+\begin{equation}
+    \rho\,\mathbf{a} = (\rho - \rho_m)\,\mathbf{g}
+    \qquad\Longleftrightarrow\qquad
+    a_z = -g\left(1 - \frac{\rho_m}{\rho}\right).
+    \label{eq:fix}
+\end{equation}
+Ses propriétés répondent au problème :
+\begin{enumerate}
+    \item $\rho(\mathbf{x})$ est périodique, donc la force l'est aussi.
+    \item sa moyenne est nulle, $\int(\rho-\rho_m)\,\mathbf{g}\,\mathrm{d}V = 0$ :
+    pas d'emballement de la quantité de mouvement totale.
+\end{enumerate}
+
+\subsection{Repère mobile et conservation du volume}
+
+L'advection numérique de l'interface à travers le maillage fixe introduit une dérive artificielle du volume de la bulle lors des franchissements de mailles. Pour supprimer ce biais, nous exploitons l'invariance galiléenne en annulant le déplacement moyen de la bulle via un changement de repère dynamique :
+\begin{equation}
+    u_z \leftarrow u_z - \delta, \qquad
+    \delta = \frac{\mathrm{d}t}{\tau_f}\,\overline{u_z}\big|_{\text{gaz}},
+    \qquad U_f \leftarrow U_f + \delta,
+    \label{eq:frame}
+\end{equation}
+où $U_f$ est la vitesse cumulée du repère et $\tau_f = 1$~u.t. un temps de relaxation. La vitesse terminale $u_\infty$ correspond à la valeur asymptotique de $U_f$, et la trajectoire au laboratoire est obtenue par intégration $z_{\text{lab}}(t) = \int U_f\,\mathrm{d}t$. L'utilisation d'une relaxation progressive garantit le caractère inertiel du repère à l'équilibre ($\delta \to 0$) sans introduire de forces d'entraînement parasites durant la phase transitoire.
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \renewcommand{\arraystretch}{1.2}
+    \begin{tabular}{lcc}
+        \toprule
+        Cas laminaire ($g=4$, $Bo=1$) & Repère fixe & \textbf{Repère mobile} \\
+        \midrule
+        Vitesse d'ascension $u_\infty$ & $12{,}6$ (biaisée) & $\mathbf{12{,}27}$ \\
+        Variation de volume ($100$~u.t.) & $+12{,}5\%$ & $\mathbf{+0{,}8\%}$ \\
+        Déplacement relatif dans la grille & $1889$~u. ($16$ traversées) & $\sim 0$ \\
+        Quantité de mouvement résiduelle ($p_{z,\text{lab}}/u_\infty$) & Non mesurée & $\mathbf{0{,}35\%}$ \\
+        \bottomrule
+    \end{tabular}
+    \caption{Impact de l'implémentation du repère mobile sur la conservation du volume et la mesure de la vitesse terminale en régime laminaire ($Bo=1$, $Ga=70$).}
+    \label{tab:frame_verdict}
+\end{table}
+
+L'évaluation du dispositif sur le cas limite laminaire ($g=4$, $Bo=1$) confirme l'élimination de la dérive géométrique (tab.~\ref{tab:frame_verdict}) :
+\begin{itemize}
+    \item \textbf{Vitesse terminale} : $U_f$ converge vers un plateau $u_\infty = 12{,}27$ avec une pente résiduelle négligeable ($-2\times10^{-3}$~u.t.$^{-1}$ sur $t \in [210,260]$).
+    \item \textbf{Conservation du volume} : l'intégration stricte $\int(1-f)\,\mathrm{d}V$ sur l'ensemble du domaine indique une variation volumique limitée à $+0{,}8\%$ sur $100$~u.t. (contre $+12{,}5\%$ en repère fixe). Le diamètre équivalent $D=16$ reste constant à $0{,}3\%$ près.
+    \item \textbf{Conservation de la quantité de mouvement} : le bilan global au laboratoire vérifie $|p_{z,\text{lab}}| \le 0{,}04$, soit moins de $0{,}35\%$ de $u_\infty$, excluant l'existence d'accélérations non physiques.
+\end{itemize}
+
+\subsection{Confrontation aux corrélations théoriques}
+\label{subsec:theorie}
+
+À la vitesse terminale $u_\infty = 12{,}27$, les nombres caractéristiques associés au cas laminaire ($Bo=1$, $Ga=70$) sont :
+\begin{equation}
+    Re_b = \frac{u_\infty D}{\nu} = 107, \quad
+    Fr = \frac{u_\infty}{\sqrt{gD}} = 1{,}53, \quad
+    We = \frac{\rho\,u_\infty^2 D}{\sigma} = 2{,}34, \quad
+    Mo = 4{,}1\times10^{-8}.
+\end{equation}
+
+Le coefficient de traînée mesuré à l'équilibre poussée--traînée s'élève à :
+\begin{equation}
+    C_D = \frac{4}{3}\,\frac{(\rho_1-\rho_2)\,g\,D}{\rho_1\,u_\infty^2} = 0{,}57.
+\end{equation}
+Cette valeur s'insère de manière cohérente entre la corrélation de Mei \emph{et al.}~\cite{mei1994} pour une bulle sphérique fluide ($C_D^{\text{propre}} = 0{,}35$) et celle de Schiller--Naumann pour une sphère rigide ($C_D^{\text{solide}} = 1{,}06$). L'accroissement de traînée de $62\%$ par rapport à la bulle sphérique propre découle de la déformation oblate du rapport d'aspect $\chi = 1{,}38$ (section droite accrue) et du caractère instationnaire du sillage.
+
+Pour le rapport d'aspect, la corrélation de Legendre \& Zenit~\cite{legendre2025} :
+\begin{equation}
+    \chi = \left[1 - \frac{9}{64}\,We\,\left(1+0{,}2\,Mo^{1/10}\right)^{-1}\right]^{-1},
+\end{equation}
+prédit $\chi_{\text{préd}} = 1{,}47$, en accord à $6\%$ près avec la mesure numérique ($\chi_{\text{mes}} = 1{,}38$).
+
+
+\subsection{Instabilité de trajectoire et dynamique de sillage}
+
+L'écoulement présente une vitesse horizontale moyenne non nulle dont le module $|u_h|$ oscille entre $5\%$ et $18\%$ de $u_\infty$ (moyenne à $11\%$). L'orientation de la dérive ($\mathrm{d}y/\mathrm{d}x \simeq 2{,}2$, azimut $\simeq 66^\circ$) ne suit pas les axes principaux du maillage, et la quantité de mouvement horizontale globale demeure strictement conservée ($|p_x|, |p_y| \le 4\times10^{-3}$).
+
+Cette dynamique traduit l'instabilité de sillage propre aux bulles ascensionnelles : à $Bo=1$, le seuil de transition vers une trajectoire oblique est fixé à $Ga_c \simeq 44$~\cite{canolozano2016}. Le régime étudié ($Ga=70 > Ga_c$) se situe au-delà de cette transition.
+
+L'origine physique de cette dérive latérale est confirmée par deux diagnostics :
+\begin{enumerate}
+    \item \textbf{Courants parasites} : la simulation d'une bulle statique sans gravité donne des vitesses résiduelles maximales de $u_{\max} = 9{,}3\times10^{-3}$ ($0{,}08\%$ de $u_\infty$), excluant toute erreur systématique d'origine capillaire. Le saut de pression discret surévalue le saut théorique de Laplace de $1{,}8\%$ seulement au niveau $7$ ($+0{,}48\%$ au niveau $8$).
+    \item \textbf{Fréquence de lâcher} : la vitesse transversale $|u_h|$ établit un cycle limite d'amplitude $[0{,}14 ; 2{,}57]$ à la fréquence adimensionnelle $St = fD/u_\infty = 0{,}080$, caractéristique du lâcher tourbillonnaire périodique dans ce régime de Reynolds.
+\end{enumerate}
+
+Cette composante horizontale de la vitesse, strictement orthogonale à la direction d'ascension, n'affecte pas la détermination de la vitesse terminale $u_\infty$.
+
+
+\subsection{Effet de réentrance du sillage en domaine périodique}
+
+En domaine triplement périodique, la bulle interagit avec son propre sillage lors des traversées successives de la boîte de calcul. Sur une durée de $100$~u.t. (soit environ $10$ traversées du domaine), cette réentrance induit une fluctuation d'énergie cinétique résiduelle dans le liquide qui passe de $k \simeq 0{,}05$ à une valeur d'équilibre $k \simeq 0{,}45$ vers $t \simeq 190$~u.t., où s'établit un bilan stationnaire entre la production par le sillage et la dissipation visqueuse.
+
+L'impact de cette agitation résiduelle sur la vitesse d'ascension laminaire est mesuré à $-0{,}8\%$. Ce biais a été quantifié par deux approches indépendantes :
+\begin{enumerate}
+    \item En modélisant le sillage réentrant comme une agitation turbulente de fond d'intensité relative $\beta_{\text{sillage}} = u'_{\text{sillage}}/u_\infty = 0{,}045$, l'application de la loi de réduction à faible intensité ($\S\ref{subsec:resultats_turb}$) prédit une baisse de vitesse de $-0{,}76\%$.
+    \item La mesure directe du plateau de vitesse sur la fenêtre $t \in [220, 260]$ indique une dérive relative de $-0{,}84\%$.
+\end{enumerate}
+
+Ce biais résiduel de l'ordre de $1\%$ demeure négligeable devant les amplitudes de ralentissement mesurées sous turbulence imposée (de $-6\%$ à $-38\%$). Pour les cas turbulents, la prise en compte de ce fond d'agitation par combinaison en quadrature ($\beta_{\text{eff}} = \sqrt{\beta^2 + \beta_{\text{sillage}}^2}$) n'introduit qu'un décalage maximal de $+4{,}4\%$ sur l'intensité relative effective au point le plus faible ($\beta = 0{,}15$), et de $+0{,}7\%$ au point le plus élevé ($\beta = 0{,}38$).
+
+
+\subsection{Étude de convergence spatiale en régime laminaire}
+\label{subsec:convergence}
+
+En écoulement turbulent, la sensibilité aux conditions initiales induit une divergence exponentielle des trajectoires individuelles, interdisant une analyse de convergence spatiale déterministe point par point. L'évaluation de la convergence en maillage est donc conduite sur le cas laminaire ($Bo=1$, $Ga=70$), ce qui permet d'isoler la précision de la méthode numérique des effets du chaos turbulent.
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \renewcommand{\arraystretch}{1.2}
+    \begin{tabular}{lcccccc}
+        \toprule
+        Niveau & $D/\Delta x$ & $\delta/\Delta x$ & $u_\infty$ & $Re_b$ & $C_D$ & $\chi$ \\
+        \midrule
+        6 & $8{,}5$  & $0{,}87$ & $10{,}93$  & $95{,}9$  & $0{,}713$ & $1{,}26$ \\
+        7 & $17{,}1$ & $1{,}64$ & $12{,}274$ & $107{,}7$ & $0{,}566$ & $1{,}38$ \\
+        8 & $34{,}1$ & $3{,}28$ & $12{,}314$ & $108{,}0$ & $0{,}562$ & $1{,}36$ \\
+        \bottomrule
+    \end{tabular}
+    \caption{Étude de convergence en maillage du cas laminaire ($Bo=1$, $Ga=70$). $\delta \sim D/\sqrt{Re_b}$ désigne l'épaisseur caractérisant la couche limite hydraulique. L'écart relatif passe de $+12{,}3\%$ (niveau 6 à 7) à $+0{,}32\%$ (niveau 7 à 8). L'extrapolation de Richardson à l'ordre $p=2$ fournit la valeur asymptotique $u_\infty = 12{,}33$, dont le niveau 7 s'écarte de $-0{,}4\%$.}
+    \label{tab:convergence}
+\end{table}
+
+Les résultats synthétisés dans le tableau~\ref{tab:convergence} montrent que le critère prépondérant pour la précision de la vitesse d'ascension n'est pas la résolution globale du diamètre $D/\Delta x$, mais le discrétisation de la couche limite $\delta/\Delta x$ :
+\begin{itemize}
+    \item Au niveau 6, la couche limite est sous-résolue ($\delta/\Delta x = 0{,}87$), entraînant une sous-estimation de la vitesse terminale de $12\%$ et une surestimation du coefficient de traînée $C_D$ de $27\%$.
+    \item Dès l'atteinte de $\delta/\Delta x \simeq 1{,}64$ (niveau 7), le raffinement supplémentaire d'un facteur deux (niveau 8) ne modifie la vitesse $u_\infty$ que de $0{,}32\%$. Une résolution de $17$ mailles par diamètre s'avère donc suffisante pour assurer l'indépendance au maillage à ce nombre de Reynolds.
+\end{itemize}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{convergence_maillage.png}
+    \caption{\textbf{Convergence en maillage du cas laminaire.} Évolution temporelle des trajectoires $z_{\text{lab}}(t)$ (en haut à gauche), dépendance de la vitesse terminale $u_\infty$ au rapport $\delta/\Delta x$ (en haut à droite), et profil de vitesse instantanée montrant la conservation du régime transitoire et de la fréquence d'oscillation (en bas à gauche).}
+    \label{fig:convergence_maillage}
+\end{figure}
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \renewcommand{\arraystretch}{1.2}
+    \input{sections/table_resolution}
+    \caption{Évaluation des échelles turbulentes au niveau 7 de raffinement. Le critère de résolution spatiale de Kolmogorov $k_{\max}\eta \ge 1{,}5$ est vérifié sur l'ensemble des points d'étude, avec un minimum à $3{,}92$.}
+    \label{tab:resol_turb}
+\end{table}
+
+
+\subsection{Convergence spatiale des grandeurs statistiques en régime turbulent}
+\label{subsec:conv_turb}
+
+En régime turbulent ($\beta=0{,}22$), l'évaluation de l'indépendance au maillage repose sur la convergence des grandeurs statistiques d'ensemble mesurées à partir d'un même état initial sur trois niveaux de raffinement (niveaux 6, 7 et 8).
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{convergence_turbulente.png}
+    \caption{\textbf{Convergence statistique en régime turbulent} ($\beta=0{,}22$). Trajectoires verticales $z_{\text{lab}}(t)$ (haut gauche), vitesse moyenne d'ascension $u_\infty$ par niveau (haut droite), distance entre trajectoires sous maillages distincts (bas gauche), invariance du nombre de Reynolds turbulent $Re_\lambda$ (bas milieu) et résolution du critère de Kolmogorov $k_{\max}\eta$ (bas droite).}
+    \label{fig:conv_turb}
+\end{figure}
+
+Les diagnostics synthétisés sur la figure~\ref{fig:conv_turb} confirment la convergence du niveau 7 :
+\begin{itemize}
+    \item \textbf{Résolution des échelles de Kolmogorov} : le critère de résolution $k_{\max}\eta \ge 1{,}5$ est satisfait dès le niveau 7 ($k_{\max}\eta = 5{,}5$), tandis que le niveau 6 se situe à la limite de résolution ($k_{\max}\eta = 2{,}9$).
+    \item \textbf{Énergie et échelle d'agitation} : le nombre de Reynolds basé sur la longueur de Taylor s'établit de manière identique à $Re_\lambda = 22{,}3$ sur les trois maillages.
+    \item \textbf{Vitesse moyenne d'ascension} : évaluée sur la fenêtre temporelle commune $t \in [180, 209]$, la vitesse d'ascension moyenne passe de $7{,}9$ au niveau 6 à $11{,}5$ au niveau 7 et $11{,}7$ au niveau 8. L'écart relatif entre les niveaux 7 et 8 est de $2\%$ (compris dans la variance statistique d'une réalisation unique), contre une sous-estimation de $30\%$ au niveau 6 liée à la sous-résolution de la couche limite ($\delta/\Delta x = 0{,}87$).
+\end{itemize}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{trajectoires_cote_a_cote.png}
+    \caption{\textbf{Sensibilité spatiale et conservation de la vitesse moyenne.} Projection horizontale du déplacement de la bulle (rangée supérieure) et écart instantané entre trajectoires (rangée inférieure). Malgré la décorrélation spatiale des parcours individuels, la pente moyenne de remontée demeure strictement conservée entre les niveaux 7 et 8.}
+    \label{fig:traj}
+\end{figure}
+
+Ces résultats valident le niveau de raffinement 7 pour l'ensemble de la campagne turbulente et justifient l'utilisation de moyennes d'échantillons sur $n=5$ réalisations pour pincer la vitesse terminale.

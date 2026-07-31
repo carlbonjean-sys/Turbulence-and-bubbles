@@ -1,0 +1,25 @@
+\section{Journal de bord}
+
+\subsection{Semaine 1 : Prise en main et installation de l'environnement}
+La première phase du travail a été dédiée à la configuration de la station de travail et à l'apprentissage du solveur open-source \texttt{Basilisk}.
+
+\begin{itemize}
+    \item \textbf{Installation de l'environnement et étude bibliographique :} Afin de disposer d'un environnement de développement UNIX  sur ma machine, j'ai procédé à l'installation d'un sous-système \texttt{Ubuntu} (via WSL). Cela permet d'exécuter nativement les outils de compilation requis. J'ai aussi appris à me servir du supercalculateur de l'IMFT.
+    \item \textbf{Configuration de Basilisk :} Installation du compilateur \texttt{qcc} et de la suite d'outils Basilisk. Configuration des variables d'environnement (notamment \texttt{\$BASILISK}) et des outils de rendu graphique (\texttt{fb\_tiny}).
+    \item \textbf{Premières simulations :} Validation de la chaîne de calcul à l'aide de cas-test classiques : l'ascension d'un bulle 2D bidimensionnelle dans un grand réservoir. J'ai également appris à prendre en main le langage \texttt{C} et les différentes fonctions intégrées dans \texttt{Basilisk}. J'ai également lu les différents exemples de \texttt{Two-phase flows} afin de me familiariser. L'ensemble des programmes introductifs étudiés seront détaillés dans la section suivante (\ref{sec:simulations}). J'ai également commencé à créer des programmes pour simuler ne 3D.
+    \item \textbf{Bibliographie :} En parallèle de l'implémentation numérique, une étude de l'état de l'art a été amorcée. J'ai notamment étudié la revue co-écrite par mon tuteur D. Legendre \cite{legendre2025}, qui pose les bases théoriques de la dynamique des bulles de gaz, de leur déformation, et des couplages de sillage associés.
+\end{itemize}
+
+\subsection{Semaine 2 : Modélisation 3D et résultats préliminaires}
+La deuxième phase du stage a été consacrée au passage à la troisième dimension, à l'optimisation des performances de calcul et à l'analyse des premières dynamiques physiques.
+
+\begin{itemize}
+    \item \textbf{Développement du code 3D et forçage turbulent :} J'ai implémenté un script de simulation tridimensionnelle (\texttt{3D\_turbulent.c}) modélisant l'ascension d'une bulle déformable. Le domaine a été configuré avec des conditions aux limites tri-périodiques. Pour générer et entretenir un champ de turbulence homogène isotrope (THI), j'ai intégré un événement d'accélération appliquant un forçage linéaire proportionnel à la vitesse locale du fluide, permettant d'équilibrer la dissipation visqueuse.
+    \item \textbf{Exploitation d'un run exploratoire (1 seconde physique) :} Une simulation complète a été menée jusqu'à $t = 1,0$ s à un niveau de raffinement intermédiaire (\texttt{maxlevel = 8}), nécessitant environ 8 heures de calcul. Le système eau-air étudié présente un nombre de Bond (ou d'Eötvös) de $Bo \approx 1,36$, plaçant la bulle dans un régime déformable mais stable. 
+    \item \textbf{Ouverture des accès (CALMIP) :} J'ai obtenu mes accès au supercalculateur CALMIP pour le projet \texttt{P0910}. J'ai configuré mon compte utilisateur (\texttt{bonjeanf}) sur les clusters \texttt{Olympe}. Cette transition prépare le passage à l'échelle supérieure (\texttt{maxlevel $\ge$ 9}) indispensable pour capturer les plus fines échelles de la turbulence.
+    \item \textbf{Erreur de code :} Après avoir passé en post-traitement, je me suis rendu compte que j'avais inversé les phases. Ainsi, sur la semaine 3, j'ai du refaire les simulations avec la bonne configuration. 
+\item \textbf{Semaine 3 : Protocole d'injection et convergence spatiale :} Suite à l'erreur d'inversion des phases, j'ai relancé l'étude de convergence en maillage avec la configuration physique correcte et un nouveau programme. Pour garantir l'injection de la bulle dans une turbulence bien développée, j'ai mis en place un nouveau programme scindé en deux phases : la simulation d'un précurseur monophasique jusqu'à l'obtention d'une turbulence homogène isotrope stationnaire, suivie d'une reprise du champ de vitesse pour y injecter l'interface au moment optimal.
+
+\item \textbf{Semaine 4 : Optimisation HPC et difficultés numériques :} Le passage à \texttt{maxlevel = 9} a provoqué des instabilités de convergence temporelle du solveur, m'obligeant à assouplir certains critères et à autoriser un nombre plus important d'itérations. Face à des conditions de travail extrêmes (canicule à 40°C), j'ai réorienté mon travail sur l'organisation de mon espace et l'optimisation de l'usage du supercalculateur avec l'aide de Bavesh Gautam. J'ai appris à profiler l'utilisation CPU en direct et à calibrer le nombre de tâches selon l'évolution du maillage adaptatif (règle empirique de 1 tâche pour 1 à 50 000 cellules). La simulation de niveau 9 a ainsi été distribuée efficacement sur 16 CPUs, s'achevant en environ 36 heures de calcul.
+    
+\end{itemize}
