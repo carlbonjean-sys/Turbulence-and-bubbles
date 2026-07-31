@@ -1,40 +1,8 @@
 /**
- * mechanism.c -- POURQUOI la turbulence ralentit la bulle ?
- *                Echantillonnage preferentiel vs trainee non lineaire.
+ * mechanism.c -- Échantillonnage de l'écoulement autour de la bulle
+ *               (échantillonnage préférentiel et traînée).
  *
- * Deux mecanismes candidats, SIGNATURES OPPOSEES et mesurables :
- *  (A) ECHANTILLONNAGE PREFERENTIEL : la bulle passe plus de temps dans du
- *      fluide qui DESCEND. Signature : <u_z fluide vu par la bulle> - <u_z
- *      domaine> NEGATIF.
- *  (B) TRAINEE NON LINEAIRE (Liu, Farsoiya, Perrard & Deike 2024) : fluide
- *      ambiant a vitesse moyenne nulle, mais C_D(Re) non lineaire -> les
- *      fluctuations de glissement augmentent la trainee moyenne. Signature :
- *      <u_z fluide> ~ 0 mais forte VARIANCE du glissement.
- *
- * ASTUCE REPERE MOBILE : u.z stocke = u_z^lab - frame_uz PARTOUT. La difference
- * (proche bulle) - (moyenne domaine) est donc INDEPENDANTE de frame_uz (il
- * s'annule) -> calculable sur le snapshot seul. Verifie : uz_domaine mesure
- * vaut bien ~ -frame_uz (le liquide "defile" a -12.2 en repere mobile).
- *
- * DIFFICULTE : la bulle induit son propre ecoulement (sillage sous elle,
- * potentiel autour). PARADE : cone SUPERIEUR (evite sillage et equateur) a
- * plusieurs rayons ; si <u_z> -> valeur negative quand r grandit => (A), si
- * -> 0 => (B). Coquille pleine et hemisphere en controle.
- *
- * SORTIE (1 ligne/snapshot) :
- *   label z_c u_bulle uz_domaine  4x[cone] 4x[hemi] 4x[coquille]  Vb
- *   bandes r/D = [1,1.5] [1.5,2] [2,2.5] [2.5,3] ; toutes STOCKEES (repere mobile).
- *
- * PIEGES qcc appris ici (2026-07-26) :
- *  - periodic() AVANT restore() (ne restaure ni domaine ni CL) ;
- *  - NE PAS nommer une variable 'sf'/'wf' : 'sf' est un scalaire Basilisk
- *    (two-phase-generic.h: scalar sf, fraction lissee) ;
- *  - pas de reduction sur 'coord' hors d'un event -> reductions scalaires ;
- *  - f[]/u.z[] uniquement DANS une expression (clamp(f[],..), w*u.z[]),
- *    jamais en RHS nu 'double x = f[];' ; pas de 'continue' dans foreach ;
- *    tableaux en taille litterale. Compile SERIE.
- *
- * usage : ./mechanism <snapshot> <label>
+ * Usage : ./mechanism <snapshot> <label>
  */
 #include "grid/octree.h"
 #include "navier-stokes/centered.h"

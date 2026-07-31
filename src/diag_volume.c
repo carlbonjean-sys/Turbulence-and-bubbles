@@ -1,35 +1,8 @@
 /**
- * diag_volume.c -- RECALCUL a posteriori du volume et de la vitesse de la bulle
- *                  sur un snapshot, avec les sommes CORRECTES.
+ * diag_volume.c -- Recalcul a posteriori du volume, du centre de masse
+ *                  et de la vitesse de la bulle sur snapshot Basilisk.
  *
- * A quoi ca sert
- * --------------
- * Jusqu'au 2026-07-22, `event bubble` de main.c ne sommait que sur les mailles
- * taguees (f < 0.5) et jetait donc la moitie exterieure de la bande d'interface,
- * qui contient pourtant du gaz. Resultat : volume sous-estime de ~4.5 % et
- * vitesse verticale biaisee de ~+0.35 en repere mobile. main.c est corrige, mais
- * TOUS LES RUNS DEJA FAITS ont un bubble.dat entache. Ce programme les rattrape
- * sans avoir a relancer quoi que ce soit : il relit les snapshots et recalcule.
- *
- * 🚨 PIEGE MORTEL, LA RAISON D'ETRE DES 4 LIGNES CI-DESSOUS
- * ---------------------------------------------------------
- * `restore()` NE RESTAURE NI LA TAILLE DU DOMAINE NI LES CONDITIONS AUX LIMITES.
- * Un post-traitement qui se contente de restore() travaille donc sur une boite
- * NON PERIODIQUE. Consequence constatee le 2026-07-22 : tag() ne reconnectait
- * plus la bulle a travers la frontiere des qu'elle chevauchait un bord, le
- * "volume de la bulle mere" s'effondrait a 50 %, et j'en ai conclu a tort a une
- * fausse fragmentation systematique du solveur. Il n'en etait rien : c'etait ce
- * post-traitement qui etait faux. => TOUJOURS re-declarer size(), origin() et
- * periodic() a l'identique de main().
- *
- * Sortie (une ligne par snapshot, sur stdout) :
- *   tag  V_complet  V_tronque  w_complet  w_tronque  xc  yc  zc  n_regions
- *     V_complet = Sum (1-f) dV sur TOUTES les mailles          <- la bonne valeur
- *     V_tronque = idem restreint aux mailles taguees f<0.5     <- l'ancienne
- *     w_*       = vitesse verticale ponderee correspondante
- *     xc,yc,zc  = centre de masse en MOYENNE CIRCULAIRE (periodicite)
- *
- * usage : ./diag_volume <snapshot> <etiquette>
+ * Usage : ./diag_volume <snapshot> <etiquette>
  */
 #include "grid/octree.h"
 #include "navier-stokes/centered.h"
@@ -37,7 +10,7 @@
 #include "tension.h"
 #include "tag.h"
 
-#define WIDTH 120.0            // identique a main.c
+#define WIDTH 120.0
 
 int main (int argc, char ** argv)
 {
@@ -46,7 +19,6 @@ int main (int argc, char ** argv)
     return 1;
   }
 
-  /* OBLIGATOIRE AVANT restore() -- cf. l'avertissement en tete. */
   size (WIDTH);
   origin (0., 0., 0.);
   foreach_dimension()
@@ -57,7 +29,6 @@ int main (int argc, char ** argv)
     return 1;
   }
 
-  /* --- somme COMPLETE + centre en moyenne circulaire --- */
   double kk = 2.*pi/L0;
   double Vfull = 0., Wfull = 0.;
   coord cs = {0,0,0}, ss = {0,0,0};
@@ -81,7 +52,6 @@ int main (int argc, char ** argv)
     if (com.x < 0.) com.x += L0;
   }
 
-  /* --- somme TRONQUEE (l'ancienne definition), pour quantifier l'ecart --- */
   scalar m[];
   foreach()
     m[] = (f[] < 0.5);

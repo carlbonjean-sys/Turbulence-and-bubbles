@@ -54,15 +54,7 @@ int main (int argc, char * argv[])
   periodic (top);                    // y periodique  (z reste borne : back/front)
 
   rho1 = 1.0; rho2 = rho1/RHOR;
-  /* 🚨 BUG CORRIGE le 2026-07-22 : la ligne etait
-         mu1 = 0.01*sq(WIDTH/(2.0*pi))/2.0;   // "MEME viscosite que main.c"
-     ... mais WIDTH vaut 180 ICI et 120 dans main.c, donc mu1 sortait a 4.104
-     au lieu de 1.824, soit Ga = 31 au lieu de 70 -- SOUS le seuil d'instabilite
-     de trajectoire (Ga_c ~ 44). Ce cas de comparaison aurait donc tourne dans un
-     regime physique DIFFERENT : la bulle n'aurait pas devie, et on en aurait
-     conclu que c'est le cas periodique qui est fautif. Le commentaire affirmait
-     l'inverse de ce que faisait le code.
-     -> on fige la constante de main.c (120), independamment du WIDTH local. */
+  /* Viscosité alignée avec main.c (Ga = 70) */
   mu1  = 0.01*sq(120.0/(2.0*pi))/2.0;   // = 1.82378, identique a main.c
   mu2  = mu1/MUR;
   f.sigma = (rho1 - rho2)*GRAV*sq(2.0*R0)/BOND;   // Bo = BOND (= 1)
