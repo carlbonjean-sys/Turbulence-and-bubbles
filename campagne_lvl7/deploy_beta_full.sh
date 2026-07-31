@@ -1,43 +1,7 @@
 #!/bin/bash
 # ============================================================================
-#  deploy_beta_full.sh -- 2026-07-24  (feu vert user explicite)
-#
-#  Complete la courbe u_inf_turb/u_inf (beta) dans les trois directions :
-#
-#   A) n=5 PARTOUT   : membres m3,m4 pour wt11/wt21/wt25/wt32 (wt05 les a deja).
-#                      Avec n=3, l'incertitude SUR l'ecart-type est de +/-50 %
-#                      (1/sqrt(2(n-1))) : on ne connait pas nos barres d'erreur.
-#                      A n=5 elle tombe a ~35 %. Precurseurs designA existants,
-#                      pas de dependance.
-#
-#   B) POINTS BAS    : beta = 0.05 / 0.075 / 0.10. Aujourd'hui la parabole
-#                      1-3.6 beta^2 est ajustee sur des points tous >= 0.15,
-#                      ancres seulement par le point laminaire : on SUPPOSE le
-#                      comportement quadratique a l'origine sans le verifier.
-#
-#   C) POINTS HAUTS  : beta = 0.50 / 0.65 / 0.85 / 1.00, soit ~3x la plage
-#                      actuelle (0.38). Le raisonnement "KE=200 fragmente donc
-#                      on est bloque" ne s'applique PLUS : ce run etait a GRAV=1
-#                      (sigma=255.7), on est maintenant a GRAV=4 (sigma=1022.8),
-#                      donc We_t = rho u'^2 D / sigma est 4x plus petit a
-#                      turbulence egale. Aux cibles ci-dessous We_t <= 2.36,
-#                      sous le We_c=3 de Riviere et al. (2021). Le point haut
-#                      approche donc le seuil sans le franchir : s'il fragmente
-#                      quand meme, ce n'est pas un echec, c'est une MESURE de
-#                      We_c -- resultat dans les deux cas.
-#
-#  KE_TARGET = 1.5*(beta*u_inf)^2 avec u_inf = 12.27 (laminaire, valide en
-#  maillage lvl7 vs lvl8 a 0.32 %).
-#
-#  ---------------------------------------------------------------------------
-#  GARDE-FOU D'EQUILIBRAGE (nouveau -- corrige un piege documente de
-#  deploy_sweep.sh : "afterok ne verifie que l'exit code")
-#  ---------------------------------------------------------------------------
-#  Chaque precurseur se CONTROLE lui-meme avant de rendre la main :
-#    - ke atteint dans [0.70, 1.40] x cible   (sinon le point n'est pas ou on croit)
-#    - k_max.eta >= 1.5                        (sinon la turbulence est sous-resolue)
-#  S'il echoue, il sort en erreur => afterok BLOQUE ses 5 bulles. Sans ce garde-fou
-#  un precurseur mal equilibre lance 5 runs de 48 h sur un point fantome.
+#  deploy_beta_full.sh -- Lancement de la campagne de calculs (beta-sweep)
+# ============================================================================
 #
 #  Risques connus, annonces :
 #   * les precurseurs designA sous-atteignent leur cible de 8 a 15 % (mesure :
